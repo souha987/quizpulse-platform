@@ -94,7 +94,40 @@ export class EmailService {
       </div>
     `;
 
-    // 1. Solution API HTTP (Resend) - Fonctionne sur Render, Vercel et tout cloud (Port 443 HTTPS jamais bloqué)
+    // 1. Solution API HTTP (Brevo / Sendinblue) - Priorité 1 : permet d'envoyer à TOUTES les adresses du monde sans restriction de domaine
+    const brevoApiKey = process.env.BREVO_API_KEY;
+    if (brevoApiKey) {
+      try {
+        console.log(`[EMAIL SERVICE] Envoi via Brevo API (HTTPS)...`);
+        const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'api-key': brevoApiKey,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            sender: { name: 'QuizPulse', email: process.env.BREVO_SENDER || process.env.SMTP_USER || 'barounisouha28009@gmail.com' },
+            to: [{ email: to, name: prenom }],
+            subject,
+            htmlContent: html,
+            textContent: text,
+          }),
+        });
+
+        if (res.ok) {
+          console.log(`[EMAIL SERVICE SUCCÈS] E-mail envoyé avec succès via Brevo API !`);
+          return true;
+        } else {
+          const errText = await res.text();
+          console.error(`[EMAIL SERVICE ERREUR] Échec Brevo API:`, errText);
+        }
+      } catch (err: any) {
+        console.error(`[EMAIL SERVICE ERREUR] Exception Brevo:`, err.message);
+      }
+    }
+
+    // 2. Solution API HTTP (Resend) - Fonctionne sur Render (restreint au propriétaire en mode gratuit)
     const resendApiKey = process.env.RESEND_API_KEY;
     if (resendApiKey) {
       try {
@@ -124,39 +157,6 @@ export class EmailService {
         }
       } catch (err: any) {
         console.error(`[EMAIL SERVICE ERREUR] Exception Resend:`, err.message);
-      }
-    }
-
-    // 2. Solution API HTTP (Brevo) - Port 443 HTTPS
-    const brevoApiKey = process.env.BREVO_API_KEY;
-    if (brevoApiKey) {
-      try {
-        console.log(`[EMAIL SERVICE] Envoi via Brevo API (HTTPS)...`);
-        const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-          method: 'POST',
-          headers: {
-            'api-key': brevoApiKey,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify({
-            sender: { name: 'QuizPulse', email: process.env.BREVO_SENDER || 'barounisouha28009@gmail.com' },
-            to: [{ email: to, name: prenom }],
-            subject,
-            htmlContent: html,
-            textContent: text,
-          }),
-        });
-
-        if (res.ok) {
-          console.log(`[EMAIL SERVICE SUCCÈS] E-mail envoyé avec succès via Brevo API !`);
-          return true;
-        } else {
-          const errText = await res.text();
-          console.error(`[EMAIL SERVICE ERREUR] Échec Brevo API:`, errText);
-        }
-      } catch (err: any) {
-        console.error(`[EMAIL SERVICE ERREUR] Exception Brevo:`, err.message);
       }
     }
 
