@@ -61,22 +61,17 @@ export class AuthService {
     // Envoyer l'e-mail de confirmation réel
     const emailSent = await emailService.sendVerificationEmail(data.email, data.prenom, codeVerification);
     if (!emailSent) {
-      console.warn(`[AUTH] Email could not be sent to ${data.email}. Code is: ${codeVerification}`);
-      return {
-        success: true,
-        requiresVerification: true,
-        registrationToken,
-        message: `Votre compte est créé ! Votre code de validation est : ${codeVerification}`,
-        email: data.email,
-        fallbackCode: codeVerification,
-      };
+      throw new AppError(
+        "Impossible d'envoyer l'e-mail de confirmation. Veuillez vérifier votre adresse e-mail ou réessayer plus tard.",
+        500
+      );
     }
 
     return {
       success: true,
       requiresVerification: true,
       registrationToken,
-      message: 'Un e-mail de confirmation contenant votre code a été envoyé sur votre adresse Gmail. Votre compte ne sera créé dans la base de données qu\'après validation.',
+      message: 'Un e-mail de confirmation contenant votre code secret a été envoyé sur votre adresse e-mail.',
       email: data.email,
     };
   }
@@ -165,10 +160,8 @@ export class AuthService {
       throw new AppError('L\'adresse e-mail ne correspond pas à la session d\'inscription', 400);
     }
 
-    const isMasterCode = code.trim() === '123456';
-    const isOriginalCode = payload.codeVerification && payload.codeVerification.trim() === code.trim();
-    if (!isMasterCode && !isOriginalCode) {
-      throw new AppError('Code de confirmation invalide. Vous pouvez aussi utiliser le code de secours 123456.', 400);
+    if (!payload.codeVerification || payload.codeVerification.trim() !== code.trim()) {
+      throw new AppError('Code de confirmation invalide. Veuillez vérifier votre boîte mail.', 400);
     }
 
     // C'EST UNIQUEMENT ICI, APRÈS VÉRIFICATION PAR E-MAIL, QUE LE COMPTE EST CRÉÉ DANS LA BASE !
@@ -240,13 +233,10 @@ export class AuthService {
 
     const emailSent = await emailService.sendVerificationEmail(payload.email, payload.prenom, newCode);
     if (!emailSent) {
-      console.warn(`[AUTH] Resend email could not be sent to ${payload.email}. Fallback code: ${newCode}`);
-      return {
-        success: true,
-        registrationToken: newRegistrationToken,
-        message: `Votre nouveau code de validation est : ${newCode}`,
-        fallbackCode: newCode,
-      };
+      throw new AppError(
+        "Impossible de renvoyer l'e-mail de confirmation. Veuillez vérifier votre adresse e-mail ou réessayer plus tard.",
+        500
+      );
     }
 
     return {

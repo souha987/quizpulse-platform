@@ -21,9 +21,9 @@ export class EmailService {
             user,
             pass: pass.replace(/\s+/g, ''), // Nettoyer les espaces éventuels des mots de passe d'application Google (ex: 'abcd efgh ijkl mnop')
           },
-          connectionTimeout: 3000,
-          greetingTimeout: 3000,
-          socketTimeout: 3000,
+          connectionTimeout: 15000,
+          greetingTimeout: 15000,
+          socketTimeout: 15000,
         });
       }
 
@@ -34,9 +34,9 @@ export class EmailService {
           port,
           secure: port === 465,
           auth: { user, pass },
-          connectionTimeout: 3000,
-          greetingTimeout: 3000,
-          socketTimeout: 3000,
+          connectionTimeout: 15000,
+          greetingTimeout: 15000,
+          socketTimeout: 15000,
         });
       }
     } catch (err) {
@@ -64,10 +64,6 @@ export class EmailService {
       console.log(`[EMAIL SERVICE INFO] Envoi réel en cours via le compte Gmail: ${user}...`);
     }
     console.log(`======================================================\n`);
-
-    if (!transporter) {
-      return false;
-    }
 
     const subject = 'Confirmez votre adresse e-mail - QuizPulse';
     const text = `Bonjour ${prenom},\n\nMerci de vous être inscrit sur QuizPulse !\nVotre code de confirmation est : ${code}\nCe code est valable pendant 24 heures.\n\nL'équipe QuizPulse`;
@@ -98,6 +94,76 @@ export class EmailService {
       </div>
     `;
 
+    // 1. Solution API HTTP (Resend) - Fonctionne sur Render, Vercel et tout cloud (Port 443 HTTPS jamais bloqué)
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (resendApiKey) {
+      try {
+        console.log(`[EMAIL SERVICE] Envoi via Resend API (HTTPS)...`);
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: process.env.RESEND_FROM || 'QuizPulse <onboarding@resend.dev>',
+            to: [to],
+            subject,
+            html,
+            text,
+          }),
+        });
+
+        if (res.ok) {
+          const json = await res.json() as any;
+          console.log(`[EMAIL SERVICE SUCCÈS] E-mail envoyé avec succès via Resend API ! ID: ${json.id}`);
+          return true;
+        } else {
+          const errText = await res.text();
+          console.error(`[EMAIL SERVICE ERREUR] Échec Resend API:`, errText);
+        }
+      } catch (err: any) {
+        console.error(`[EMAIL SERVICE ERREUR] Exception Resend:`, err.message);
+      }
+    }
+
+    // 2. Solution API HTTP (Brevo) - Port 443 HTTPS
+    const brevoApiKey = process.env.BREVO_API_KEY;
+    if (brevoApiKey) {
+      try {
+        console.log(`[EMAIL SERVICE] Envoi via Brevo API (HTTPS)...`);
+        const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'api-key': brevoApiKey,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            sender: { name: 'QuizPulse', email: process.env.BREVO_SENDER || 'barounisouha28009@gmail.com' },
+            to: [{ email: to, name: prenom }],
+            subject,
+            htmlContent: html,
+            textContent: text,
+          }),
+        });
+
+        if (res.ok) {
+          console.log(`[EMAIL SERVICE SUCCÈS] E-mail envoyé avec succès via Brevo API !`);
+          return true;
+        } else {
+          const errText = await res.text();
+          console.error(`[EMAIL SERVICE ERREUR] Échec Brevo API:`, errText);
+        }
+      } catch (err: any) {
+        console.error(`[EMAIL SERVICE ERREUR] Exception Brevo:`, err.message);
+      }
+    }
+
+    if (!transporter) {
+      return false;
+    }
+
     try {
       const from = process.env.SMTP_FROM || `"QuizPulse" <${user}>`;
       const sendPromise = transporter.sendMail({
@@ -109,7 +175,7 @@ export class EmailService {
       });
 
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('SMTP timeout (3s limit reached)')), 3000)
+        setTimeout(() => reject(new Error('SMTP timeout (15s limit reached)')), 15000)
       );
 
       const info = (await Promise.race([sendPromise, timeoutPromise])) as any;

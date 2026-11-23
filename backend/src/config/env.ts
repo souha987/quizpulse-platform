@@ -33,6 +33,10 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().optional().default('QuizPulse <no-reply@quizpulse.com>'),
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM: z.string().optional(),
+  BREVO_API_KEY: z.string().optional(),
+  BREVO_SENDER: z.string().optional(),
 }).superRefine((data, ctx) => {
   if (data.NODE_ENV === 'production') {
     if (data.JWT_SECRET === INSECURE_DEFAULT_JWT) {
