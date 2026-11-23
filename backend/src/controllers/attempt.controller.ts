@@ -35,6 +35,7 @@ export class AttemptController {
       const headerSessionId = req.headers['x-session-id'] as string;
       const session = identifiantSession || headerSessionId;
       const userId = req.user?.userId;
+      const role = req.user?.role;
       const hasExpired = Boolean(estExpiree || isAutoExpired);
 
       const result = await attemptService.submitAttempt(
@@ -42,7 +43,8 @@ export class AttemptController {
         reponses,
         userId,
         session,
-        hasExpired
+        hasExpired,
+        role
       );
       res.status(200).json(result);
     } catch (error) {

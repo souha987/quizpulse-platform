@@ -10,6 +10,7 @@ import '../../../shared/widgets/pulse_3d_button.dart';
 import '../../../shared/widgets/quiz_pulse_logo.dart';
 import '../../../shared/widgets/responsive_container.dart';
 import '../../../shared/widgets/edu_mascot.dart';
+import '../../../models/user_model.dart';
 import '../../../shared/widgets/count_up_text.dart';
 
 class QuizResultScreen extends ConsumerStatefulWidget {
@@ -172,6 +173,7 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
     }
 
     final isSuccess = result.noteSur20 >= 10.0;
+    final isStudent = authState.role == UserRole.etudiant || authState.role == UserRole.visiteur;
     final studentName = authState.user?.nomComplet ?? 'Candidat Évaluateur';
 
     String mention = 'Passable';
@@ -465,237 +467,294 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
 
               const SizedBox(height: 32),
 
-              // Corrigé Détaillé et Explications
-              Row(
-                children: [
-                  const Icon(Icons.menu_book, color: AppTheme.primary),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Corrigé & Explications Pédagogiques',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${result.corrige.length} questions',
-                    style: const TextStyle(color: AppTheme.textMuted),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-
-              // Puces de filtrage interactif
-              Row(
-                children: [
-                  ChoiceChip(
-                    label: Text('Tout (${result.corrige.length})'),
-                    selected: _selectedFilter == 0,
-                    selectedColor: const Color(0xFF2563EB),
-                    labelStyle: TextStyle(
-                      color: _selectedFilter == 0 ? Colors.white : const Color(0xFF475569),
-                      fontWeight: FontWeight.w700,
-                    ),
-                    onSelected: (val) => setState(() => _selectedFilter = 0),
-                  ),
-                  const SizedBox(width: 8),
-                  ChoiceChip(
-                    label: Text('Mes Erreurs ($errorsCount) ❌'),
-                    selected: _selectedFilter == 1,
-                    selectedColor: const Color(0xFFDC2626),
-                    labelStyle: TextStyle(
-                      color: _selectedFilter == 1 ? Colors.white : const Color(0xFF475569),
-                      fontWeight: FontWeight.w700,
-                    ),
-                    onSelected: (val) => setState(() => _selectedFilter = 1),
-                  ),
-                  const SizedBox(width: 8),
-                  ChoiceChip(
-                    label: Text('Réussies ($successCount) ✅'),
-                    selected: _selectedFilter == 2,
-                    selectedColor: const Color(0xFF10B981),
-                    labelStyle: TextStyle(
-                      color: _selectedFilter == 2 ? Colors.white : const Color(0xFF475569),
-                      fontWeight: FontWeight.w700,
-                    ),
-                    onSelected: (val) => setState(() => _selectedFilter = 2),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              if (filteredQuestions.isEmpty)
+              if (isStudent || result.corrige.isEmpty) ...[
+                // Message pédagogique confidentiel pour les étudiants
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(32),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: const Color(0xFFE2E8F0)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: const Center(
-                    child: Text(
-                      'Aucune question ne correspond à ce filtre.',
-                      style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFFCBD5E1)),
+                        ),
+                        child: const Icon(
+                          Icons.lock_person_rounded,
+                          size: 42,
+                          color: Color(0xFF475569),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Corrigé & Réponses Confidentiels',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1E293B),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Votre copie a été enregistrée avec succès et votre note a été transmise à votre enseignant.\n\nConformément aux règles d\'évaluation académique, le corrigé détaillé des questions n\'est pas affiché aux étudiants.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF64748B),
+                          height: 1.55,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                // Corrigé Détaillé et Explications (Réservé aux Enseignants / Admins)
+                Row(
+                  children: [
+                    const Icon(Icons.menu_book, color: AppTheme.primary),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Corrigé & Explications Pédagogiques (Vue Enseignant)',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                )
-              else
-                ...filteredQuestions.asMap().entries.map((entry) {
-                  final idx = entry.key;
-                  final q = entry.value;
+                    const Spacer(),
+                    Text(
+                      '${result.corrige.length} questions',
+                      style: const TextStyle(color: AppTheme.textMuted),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
 
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      side: BorderSide(
-                        color: q.estCorrecte ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-                        width: 1.5,
+                // Puces de filtrage interactif
+                Row(
+                  children: [
+                    ChoiceChip(
+                      label: Text('Tout (${result.corrige.length})'),
+                      selected: _selectedFilter == 0,
+                      selectedColor: const Color(0xFF2563EB),
+                      labelStyle: TextStyle(
+                        color: _selectedFilter == 0 ? Colors.white : const Color(0xFF475569),
+                        fontWeight: FontWeight.w700,
+                      ),
+                      onSelected: (val) => setState(() => _selectedFilter = 0),
+                    ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: Text('Mes Erreurs ($errorsCount) ❌'),
+                      selected: _selectedFilter == 1,
+                      selectedColor: const Color(0xFFDC2626),
+                      labelStyle: TextStyle(
+                        color: _selectedFilter == 1 ? Colors.white : const Color(0xFF475569),
+                        fontWeight: FontWeight.w700,
+                      ),
+                      onSelected: (val) => setState(() => _selectedFilter = 1),
+                    ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: Text('Réussies ($successCount) ✅'),
+                      selected: _selectedFilter == 2,
+                      selectedColor: const Color(0xFF10B981),
+                      labelStyle: TextStyle(
+                        color: _selectedFilter == 2 ? Colors.white : const Color(0xFF475569),
+                        fontWeight: FontWeight.w700,
+                      ),
+                      onSelected: (val) => setState(() => _selectedFilter = 2),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                if (filteredQuestions.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Aucune question ne correspond à ce filtre.',
+                        style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
                       ),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: q.estCorrecte
-                                      ? const Color(0xFFECFDF5)
-                                      : const Color(0xFFFEF2F2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  'Question ${idx + 1}',
-                                  style: TextStyle(
-                                    color: q.estCorrecte ? const Color(0xFF047857) : const Color(0xFFDC2626),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
+                  )
+                else
+                  ...filteredQuestions.asMap().entries.map((entry) {
+                    final idx = entry.key;
+                    final q = entry.value;
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: q.estCorrecte ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: q.estCorrecte
+                                        ? const Color(0xFFECFDF5)
+                                        : const Color(0xFFFEF2F2),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
-                                ),
-                              ),
-                              const Spacer(),
-                              Text(
-                                '${q.pointsObtenus} / ${q.pointsPossible} pt${q.pointsPossible > 1 ? "s" : ""}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: q.estCorrecte ? const Color(0xFF047857) : const Color(0xFFDC2626),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            q.enonce,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                          const SizedBox(height: 14),
-
-                          ...q.options.map((opt) {
-                            final isUserChoice = q.reponseUtilisateurOptionId == opt.id;
-                            final isCorrect = opt.estCorrecte;
-
-                            Color itemColor = Colors.grey.shade50;
-                            Color borderColor = Colors.grey.shade200;
-                            IconData? icon;
-                            Color iconColor = Colors.grey;
-
-                            if (isCorrect) {
-                              itemColor = const Color(0xFFECFDF5);
-                              borderColor = const Color(0xFF10B981);
-                              icon = Icons.check_circle;
-                              iconColor = const Color(0xFF10B981);
-                            } else if (isUserChoice && !isCorrect) {
-                              itemColor = const Color(0xFFFEF2F2);
-                              borderColor = const Color(0xFFEF4444);
-                              icon = Icons.cancel;
-                              iconColor = const Color(0xFFEF4444);
-                            }
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: itemColor,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: borderColor),
-                              ),
-                              child: Row(
-                                children: [
-                                  if (icon != null) ...[
-                                    Icon(icon, color: iconColor, size: 20),
-                                    const SizedBox(width: 10),
-                                  ],
-                                  Expanded(
-                                    child: Text(
-                                      opt.texte,
-                                      style: TextStyle(
-                                        color: isCorrect
-                                            ? const Color(0xFF047857)
-                                            : (isUserChoice ? const Color(0xFFB91C1C) : Colors.black87),
-                                        fontWeight: (isCorrect || isUserChoice)
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                      ),
+                                  child: Text(
+                                    'Question ${idx + 1}',
+                                    style: TextStyle(
+                                      color: q.estCorrecte ? const Color(0xFF047857) : const Color(0xFFDC2626),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
                                     ),
                                   ),
-                                  if (isUserChoice)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: isCorrect ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '${q.pointsObtenus} / ${q.pointsPossible} pt${q.pointsPossible > 1 ? "s" : ""}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: q.estCorrecte ? const Color(0xFF047857) : const Color(0xFFDC2626),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              q.enonce,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            const SizedBox(height: 14),
+
+                            ...q.options.map((opt) {
+                              final isUserChoice = q.reponseUtilisateurOptionId == opt.id;
+                              final isCorrect = opt.estCorrecte;
+
+                              Color itemColor = Colors.grey.shade50;
+                              Color borderColor = Colors.grey.shade200;
+                              IconData? icon;
+                              Color iconColor = Colors.grey;
+
+                              if (isCorrect) {
+                                itemColor = const Color(0xFFECFDF5);
+                                borderColor = const Color(0xFF10B981);
+                                icon = Icons.check_circle;
+                                iconColor = const Color(0xFF10B981);
+                              } else if (isUserChoice && !isCorrect) {
+                                itemColor = const Color(0xFFFEF2F2);
+                                borderColor = const Color(0xFFEF4444);
+                                icon = Icons.cancel;
+                                iconColor = const Color(0xFFEF4444);
+                              }
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: itemColor,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: borderColor),
+                                ),
+                                child: Row(
+                                  children: [
+                                    if (icon != null) ...[
+                                      Icon(icon, color: iconColor, size: 20),
+                                      const SizedBox(width: 10),
+                                    ],
+                                    Expanded(
                                       child: Text(
-                                        'Votre réponse',
+                                        opt.texte,
                                         style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: isCorrect ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                                          color: isCorrect
+                                              ? const Color(0xFF047857)
+                                              : (isUserChoice ? const Color(0xFFB91C1C) : Colors.black87),
+                                          fontWeight: (isCorrect || isUserChoice)
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
                                         ),
                                       ),
                                     ),
-                                ],
-                              ),
-                            );
-                          }),
+                                    if (isUserChoice)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isCorrect ? const Color(0xFFD1FAE5) : const Color(0xFFFEE2E2),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'Votre réponse',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: isCorrect ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            }),
 
-                          if (q.explicationCorrection != null &&
-                              q.explicationCorrection!.isNotEmpty) ...[
-                            const SizedBox(height: 10),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEFF6FF),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFFBFDBFE)),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Icon(Icons.lightbulb, color: Color(0xFF2563EB), size: 18),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Explication : ${q.explicationCorrection}',
-                                      style: const TextStyle(
-                                        color: Color(0xFF1E3A8A),
-                                        fontSize: 13,
+                            if (q.explicationCorrection != null &&
+                                q.explicationCorrection!.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(Icons.lightbulb, color: Color(0xFF2563EB), size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Explication : ${q.explicationCorrection}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF1E3A8A),
+                                          fontSize: 13,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  }),
+              ],
 
               const SizedBox(height: 24),
 

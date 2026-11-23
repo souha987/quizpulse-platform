@@ -109,7 +109,8 @@ export class AttemptService {
     answers: UserSubmittedAnswer[],
     userId?: string,
     identifiantSession?: string,
-    clientEstExpiree: boolean = false
+    clientEstExpiree: boolean = false,
+    role?: string
   ) {
     const tentative = await attemptRepository.findById(tentativeId);
     if (!tentative) {
@@ -231,6 +232,9 @@ export class AttemptService {
       };
     });
 
+    // Règle pédagogique : Ne jamais envoyer le corrigé ni les bonnes réponses aux étudiants
+    const isTeacherOrAdmin = role === 'ENSEIGNANT' || role === 'ADMIN';
+
     return {
       tentativeId: savedAttempt.id,
       statut: statutFinal,
@@ -241,7 +245,7 @@ export class AttemptService {
       noteSur20: totalPointsPossible > 0 ? Math.round((totalScore / totalPointsPossible) * 20 * 10) / 10 : 0,
       dureeSecondes: Math.round(tempsEcouleMs / 1000),
       nbAvertissementsTriche: savedAttempt.nbAvertissementsTriche,
-      corrige: corrigeComplet,
+      corrige: isTeacherOrAdmin ? corrigeComplet : [],
     };
   }
 
@@ -352,6 +356,29 @@ export class AttemptService {
     // Sécurité critique : masquer les bonnes réponses et explications tant que la tentative est en cours
     if (tentative.statut === StatutTentative.EN_COURS && role !== 'ADMIN' && tentative.quiz?.enseignantId !== userId) {
       throw new AppError('Le corrigé n\'est pas disponible tant que la tentative est en cours', 403);
+    }
+
+    // Pour les étudiants : masquer systématiquement les bonnes réponses et explications
+    if (role === 'ETUDIANT' || (!role && role !== 'ADMIN' && tentative.quiz?.enseignantId !== userId)) {
+      return {
+        ...tentative,
+        quiz: tentative.quiz
+          ? {
+              ...tentative.quiz,
+              questions: tentative.quiz.questions?.map((q: any) => ({
+                id: q.id,
+                enonce: q.enonce,
+                type: q.type,
+                points: q.points,
+                ordre: q.ordre,
+                options: q.options?.map((opt: any) => ({
+                  id: opt.id,
+                  texte: opt.texte,
+                })),
+              })),
+            }
+          : undefined,
+      };
     }
 
     return tentative;
