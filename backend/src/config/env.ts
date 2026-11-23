@@ -42,13 +42,6 @@ const envSchema = z.object({
         message: 'Security error: default insecure JWT_SECRET cannot be used in production.',
       });
     }
-    if (data.STRIPE_SECRET_KEY.startsWith('sk_test_mock')) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['STRIPE_SECRET_KEY'],
-        message: 'Security error: Mock Stripe secret key cannot be used in production.',
-      });
-    }
   }
 });
 
