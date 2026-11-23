@@ -19,6 +19,9 @@ import publicRoutes from './routes/public.routes';
 
 const app = express();
 
+// Indispensable sur Render et tout reverse-proxy pour identifier l'IP des clients
+app.set('trust proxy', 1);
+
 // Sécurité : Headers HTTP avec Helmet (adapté pour Flutter Web CanvasKit & WASM)
 app.use(
   helmet({
@@ -42,6 +45,7 @@ if (env.NODE_ENV !== 'test') {
     max: 120,
     standardHeaders: true,
     legacyHeaders: false,
+    validate: { xForwardedForHeader: false },
     message: { error: 'Trop de requêtes effectuées depuis cette IP, veuillez réessayer plus tard.' },
   });
   app.use('/api/', limiter);
