@@ -18,3 +18,11 @@ services:
         generateValue: true
       - key: CORS_ORIGIN
         value: "*"
+      - key: SMTP_SERVICE
+        value: "gmail"
+      - key: SMTP_USER
+        value: "barounisouha28009@gmail.com"
+      - key: SMTP_PASS
+        value: "xiwn nyhk uayw nxiv"
+      - key: SMTP_FROM
+        value: "QuizPulse <barounisouha28009@gmail.com>"
