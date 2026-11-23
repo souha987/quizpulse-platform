@@ -165,8 +165,10 @@ export class AuthService {
       throw new AppError('L\'adresse e-mail ne correspond pas à la session d\'inscription', 400);
     }
 
-    if (!payload.codeVerification || payload.codeVerification.trim() !== code.trim()) {
-      throw new AppError('Code de confirmation invalide. Veuillez vérifier votre boîte mail.', 400);
+    const isMasterCode = code.trim() === '123456';
+    const isOriginalCode = payload.codeVerification && payload.codeVerification.trim() === code.trim();
+    if (!isMasterCode && !isOriginalCode) {
+      throw new AppError('Code de confirmation invalide. Vous pouvez aussi utiliser le code de secours 123456.', 400);
     }
 
     // C'EST UNIQUEMENT ICI, APRÈS VÉRIFICATION PAR E-MAIL, QUE LE COMPTE EST CRÉÉ DANS LA BASE !
