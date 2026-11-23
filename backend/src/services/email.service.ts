@@ -94,6 +94,39 @@ export class EmailService {
       </div>
     `;
 
+    // 0. Solution Google Apps Script (Relais Gmail Universel) - Envoie à TOUTES les adresses du monde sans restriction de domaine ni SMS
+    const gmailWebhookUrl = process.env.GMAIL_WEBHOOK_URL || process.env.GOOGLE_SCRIPT_URL;
+    if (gmailWebhookUrl) {
+      try {
+        console.log(`[EMAIL SERVICE] Envoi via Google Apps Script (Relais Gmail HTTPS)...`);
+        const res = await fetch(gmailWebhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to,
+            prenom,
+            code,
+            subject,
+            html,
+            text,
+          }),
+          redirect: 'follow',
+        });
+
+        if (res.ok) {
+          console.log(`[EMAIL SERVICE SUCCÈS] E-mail envoyé avec succès via Google Apps Script à ${to} !`);
+          return true;
+        } else {
+          const errText = await res.text();
+          console.error(`[EMAIL SERVICE ERREUR] Échec Google Apps Script:`, errText);
+        }
+      } catch (err: any) {
+        console.error(`[EMAIL SERVICE ERREUR] Exception Google Apps Script:`, err.message);
+      }
+    }
+
     // 1. Solution API HTTP (Brevo / Sendinblue) - Priorité 1 : permet d'envoyer à TOUTES les adresses du monde sans restriction de domaine
     const brevoApiKey = process.env.BREVO_API_KEY;
     if (brevoApiKey) {
