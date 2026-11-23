@@ -21,6 +21,9 @@ export class EmailService {
             user,
             pass: pass.replace(/\s+/g, ''), // Nettoyer les espaces éventuels des mots de passe d'application Google (ex: 'abcd efgh ijkl mnop')
           },
+          connectionTimeout: 3000,
+          greetingTimeout: 3000,
+          socketTimeout: 3000,
         });
       }
 
@@ -31,6 +34,9 @@ export class EmailService {
           port,
           secure: port === 465,
           auth: { user, pass },
+          connectionTimeout: 3000,
+          greetingTimeout: 3000,
+          socketTimeout: 3000,
         });
       }
     } catch (err) {
@@ -94,13 +100,19 @@ export class EmailService {
 
     try {
       const from = process.env.SMTP_FROM || `"QuizPulse" <${user}>`;
-      const info = await transporter.sendMail({
+      const sendPromise = transporter.sendMail({
         from,
         to,
         subject,
         text,
         html,
       });
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('SMTP timeout (3s limit reached)')), 3000)
+      );
+
+      const info = (await Promise.race([sendPromise, timeoutPromise])) as any;
 
       console.log(`[EMAIL SERVICE SUCCÈS] E-mail Gmail envoyé avec succès ! ID: ${info.messageId}`);
       return true;
