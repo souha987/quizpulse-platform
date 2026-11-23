@@ -131,7 +131,6 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
     }
 
     final enonceCtrl = TextEditingController();
-    final explicationCtrl = TextEditingController();
     QuestionType type = QuestionType.qcmUnique;
     double points = 1.0;
 
@@ -241,15 +240,7 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
                       );
                     }),
 
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: explicationCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Explication pédagogique (affichée lors de la correction)',
-                        hintText: 'Pourquoi cette réponse est-elle correcte ?',
-                      ),
-                      maxLines: 2,
-                    ),
+                    const SizedBox(height: 10),
                   ],
                 ),
               ),
@@ -288,7 +279,6 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
                       'enonce': enonceCtrl.text.trim(),
                       'type': type.toServerString(),
                       'points': points,
-                      'explicationCorrection': explicationCtrl.text.trim(),
                       'options': validOptions,
                     });
                     Navigator.pop(ctx);
@@ -311,7 +301,6 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
 
   void _showEditQuestionDialog(QuestionModel q) {
     final enonceCtrl = TextEditingController(text: q.enonce);
-    final explicationCtrl = TextEditingController(text: q.explicationCorrection ?? '');
     QuestionType type = q.type;
     double points = q.points;
 
@@ -454,15 +443,7 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
                         ),
                       );
                     }),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: explicationCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Explication pédagogique (affichée lors de la correction)',
-                        hintText: 'Pourquoi cette réponse est-elle correcte ?',
-                      ),
-                      maxLines: 2,
-                    ),
+                    const SizedBox(height: 10),
                   ],
                 ),
               ),
@@ -504,7 +485,6 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
                       'enonce': enonceCtrl.text.trim(),
                       'type': type.toServerString(),
                       'points': points,
-                      'explicationCorrection': explicationCtrl.text.trim(),
                       'options': validOptions,
                     });
                     if (ctx.mounted) Navigator.pop(ctx);
