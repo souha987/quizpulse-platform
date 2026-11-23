@@ -1,0 +1,21 @@
+# Fichiers sensibles
+.env
+*.env
+!.env.example
+
+# Dépendances et builds
+node_modules/
+dist/
+scratch/
+frontend/build/*
+!frontend/build/web/
+.dart_tool/
+.gradle/
+*.log
+
+# IDE et outils système
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

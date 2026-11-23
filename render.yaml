@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: quizpulse-platform
+    env: node
+    plan: free
+    buildCommand: "cd backend && npm install && npx prisma generate && npm run build"
+    startCommand: "node backend/dist/server.js"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        value: postgresql://postgres.zkiacrytnlahgzoeocke:Barounisouha28009512$@aws-0-eu-west-2.pooler.supabase.com:5432/postgres
+      - key: DIRECT_URL
+        value: postgresql://postgres.zkiacrytnlahgzoeocke:Barounisouha28009512$@aws-0-eu-west-2.pooler.supabase.com:5432/postgres
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: "*"

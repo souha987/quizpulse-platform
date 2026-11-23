@@ -1,0 +1,268 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  VISITEUR
+  ETUDIANT
+  ENSEIGNANT
+  ADMIN
+}
+
+enum StatutQuiz {
+  BROUILLON
+  PUBLIE
+  ARCHIVE
+}
+
+enum TypeQuestion {
+  QCM_UNIQUE
+  QCM_MULTIPLE
+  VRAI_FAUX
+}
+
+enum StatutTentative {
+  EN_COURS
+  TERMINEE
+  EXPIREE
+  ABANDONNEE
+}
+
+enum StatutAbonnement {
+  ACTIF
+  EXPIRE
+  ANNULE
+}
+
+enum StatutPaiement {
+  EN_ATTENTE
+  VALIDE
+  ECHOUE
+  REMBOURSE
+}
+
+enum StatutRemboursement {
+  DEMANDE
+  ACCEPTE
+  REFUSE
+}
+
+model Utilisateur {
+  id                         String            @id @default(uuid())
+  nom                        String
+  prenom                     String
+  email                      String            @unique
+  motDePasseHash             String
+  role                       Role              @default(ETUDIANT)
+  actif                      Boolean           @default(true)
+  emailVerifie               Boolean           @default(false)
+  codeVerification           String?
+  dateExpirationVerification DateTime?
+  dateInscription            DateTime          @default(now())
+  
+  classesEnseignees Classe[]         @relation("EnseignantClasses")
+  inscriptionsClasses EtudiantClasse[]
+  matieresCreees   Matiere[]
+  quizCrees        Quiz[]
+  tentatives       Tentative[]
+  abonnements      Abonnement[]      // Uniquement pour Enseignant
+}
+
+model Classe {
+  id             String            @id @default(uuid())
+  nom            String
+  codeClasse     String            @unique // Ex: ABC123
+  enseignantId   String
+  enseignant     Utilisateur       @relation("EnseignantClasses", fields: [enseignantId], references: [id], onDelete: Cascade)
+  dateCreation   DateTime          @default(now())
+  
+  etudiants      EtudiantClasse[]
+  quizAssignes   Quiz[]
+
+  @@index([enseignantId])
+}
+
+model EtudiantClasse {
+  id           String      @id @default(uuid())
+  etudiantId   String
+  classeId     String
+  etudiant     Utilisateur @relation(fields: [etudiantId], references: [id], onDelete: Cascade)
+  classe       Classe      @relation(fields: [classeId], references: [id], onDelete: Cascade)
+  dateRejoint  DateTime    @default(now())
+
+  @@unique([etudiantId, classeId])
+  @@index([classeId])
+}
+
+model Matiere {
+  id           String      @id @default(uuid())
+  nom          String
+  description  String?
+  enseignantId String
+  enseignant   Utilisateur @relation(fields: [enseignantId], references: [id], onDelete: Cascade)
+  categories   Categorie[]
+
+  @@index([enseignantId])
+}
+
+model Categorie {
+  id         String   @id @default(uuid())
+  nom        String
+  matiereId  String
+  matiere    Matiere  @relation(fields: [matiereId], references: [id], onDelete: Cascade)
+  quiz       Quiz[]
+
+  @@index([matiereId])
+}
+
+model Quiz {
+  id                   String        @id @default(uuid())
+  titre                String
+  description          String?
+  estPublic            Boolean       @default(false)
+  statut               StatutQuiz    @default(PUBLIE)
+  dureeMinutes         Int           @default(15)
+  codeAcces            String        @unique // PIN à 6 chiffres
+  modeExamenSecurise   Boolean       @default(false)
+  enseignantId         String
+  enseignant           Utilisateur   @relation(fields: [enseignantId], references: [id], onDelete: Cascade)
+  categorieId          String?
+  categorie            Categorie?    @relation(fields: [categorieId], references: [id], onDelete: SetNull)
+  classeId             String?
+  classe               Classe?       @relation(fields: [classeId], references: [id], onDelete: SetNull)
+  dateCreation         DateTime      @default(now())
+  
+  questions            Question[]
+  tentatives           Tentative[]
+
+  @@index([enseignantId])
+  @@index([categorieId])
+  @@index([classeId])
+}
+
+model Question {
+  id                   String        @id @default(uuid())
+  quizId               String
+  quiz                 Quiz          @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  enonce               String
+  type                 TypeQuestion  @default(QCM_UNIQUE)
+  points               Float         @default(1.0)
+  ordre                Int           @default(1)
+  explicationCorrection String?
+  
+  options              Option[]
+  reponsesDonnees      ReponseDonnee[]
+
+  @@index([quizId])
+}
+
+model Option {
+  id           String          @id @default(uuid())
+  questionId   String
+  question     Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  texte        String
+  estCorrecte  Boolean         @default(false)
+  
+  reponses     ReponseDonnee[]
+
+  @@index([questionId])
+}
+
+model Tentative {
+  id                 String          @id @default(uuid())
+  quizId             String
+  quiz               Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  utilisateurId      String?         // Null pour Visiteur anonyme
+  utilisateur        Utilisateur?    @relation(fields: [utilisateurId], references: [id], onDelete: SetNull)
+  identifiantSession String?         // Utilisé pour Visiteur anonyme
+  dateDebut          DateTime        @default(now())
+  dateFin            DateTime?
+  statut             StatutTentative @default(EN_COURS)
+  score              Float           @default(0.0)
+  nbAvertissementsTriche Int         @default(0)
+  
+  reponses           ReponseDonnee[]
+
+  @@index([quizId])
+  @@index([utilisateurId])
+}
+
+model ReponseDonnee {
+  id            String    @id @default(uuid())
+  tentativeId   String
+  tentative     Tentative @relation(fields: [tentativeId], references: [id], onDelete: Cascade)
+  questionId    String
+  question      Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  optionId      String?
+  option        Option?   @relation(fields: [optionId], references: [id], onDelete: SetNull)
+  reponseTexte  String?
+  estCorrecte   Boolean   @default(false)
+  pointsObtenus Float     @default(0.0)
+
+  @@index([tentativeId])
+  @@index([questionId])
+  @@index([optionId])
+}
+
+model OffreAbonnement {
+  id           String        @id @default(uuid())
+  nom          String
+  prix         Float
+  dureeJours   Int           @default(30)
+  quotaQuiz    Int           @default(5)
+  quotaClasses Int           @default(2)
+  modeSecuriseAutorise Boolean @default(false)
+  active       Boolean       @default(true)
+  
+  abonnements  Abonnement[]
+}
+
+model Abonnement {
+  id            String           @id @default(uuid())
+  enseignantId  String
+  enseignant    Utilisateur      @relation(fields: [enseignantId], references: [id], onDelete: Cascade)
+  offreId       String
+  offre         OffreAbonnement  @relation(fields: [offreId], references: [id], onDelete: Restrict)
+  dateDebut     DateTime         @default(now())
+  dateFin       DateTime
+  statut        StatutAbonnement @default(ACTIF)
+  
+  paiements     Paiement[]
+
+  @@index([enseignantId])
+  @@index([offreId])
+}
+
+model Paiement {
+  id            String          @id @default(uuid())
+  abonnementId  String
+  abonnement    Abonnement      @relation(fields: [abonnementId], references: [id], onDelete: Cascade)
+  reference     String          @unique
+  montant       Float
+  methode       String
+  statut        StatutPaiement  @default(EN_ATTENTE)
+  datePaiement  DateTime        @default(now())
+  
+  remboursements Remboursement[]
+
+  @@index([abonnementId])
+}
+
+model Remboursement {
+  id           String              @id @default(uuid())
+  paiementId   String
+  paiement     Paiement            @relation(fields: [paiementId], references: [id], onDelete: Cascade)
+  montant      Float
+  motif        String
+  statut       StatutRemboursement @default(DEMANDE)
+  dateDemande  DateTime            @default(now())
+
+  @@index([paiementId])
+}
+
