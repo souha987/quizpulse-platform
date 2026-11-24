@@ -109,9 +109,12 @@ export class AttemptRepository {
     return prisma.tentative.update({
       where: { id: tentativeId },
       data: {
+        statut: 'ANNULEE_TRICHE',
+        score: 0.0,
         nbAvertissementsTriche: {
           increment: 1,
         },
+        dateFin: new Date(),
       },
     });
   }
@@ -227,7 +230,7 @@ export class AttemptRepository {
 
   async getAttemptsForQuiz(quizId: string) {
     return prisma.tentative.findMany({
-      where: { quizId, statut: { in: ['TERMINEE', 'EXPIREE'] } },
+      where: { quizId, statut: { in: ['TERMINEE', 'EXPIREE', 'ANNULEE_TRICHE'] } },
       include: {
         utilisateur: {
           select: { id: true, nom: true, prenom: true, email: true },

@@ -77,21 +77,26 @@ export class AnalyticsService {
 
     // Liste des étudiants et notes
     const tentativesEtudiants = attempts.map((a) => {
-      const noteSur20 =
-        totalPossiblePoints > 0 ? Math.round((a.score / totalPossiblePoints) * 20 * 10) / 10 : 0;
+      const isCheated = a.statut === 'ANNULEE_TRICHE' || a.nbAvertissementsTriche > 0;
+      const noteSur20 = isCheated
+        ? 0.0
+        : (totalPossiblePoints > 0 ? Math.round((a.score / totalPossiblePoints) * 20 * 10) / 10 : 0);
       const nomComplet = a.utilisateur
         ? `${a.utilisateur.nom} ${a.utilisateur.prenom}`
         : `Visiteur Anonyme (${a.identifiantSession || 'N/A'})`;
 
       return {
         tentativeId: a.id,
+        nom: a.utilisateur?.nom ?? '',
+        prenom: a.utilisateur?.prenom ?? (a.utilisateur ? '' : 'Visiteur Anonyme'),
         etudiantNom: nomComplet,
         email: a.utilisateur?.email ?? 'N/A',
         datePassage: a.dateDebut,
-        score: a.score,
+        score: isCheated ? 0.0 : a.score,
         noteSur20,
         statut: a.statut,
         nbAvertissementsTriche: a.nbAvertissementsTriche,
+        tricheDetectee: isCheated,
       };
     });
 
@@ -129,7 +134,7 @@ export class AnalyticsService {
       prisma.tentative.findMany({
         where: {
           quiz: { enseignantId },
-          statut: { in: ['TERMINEE', 'EXPIREE'] },
+          statut: { in: ['TERMINEE', 'EXPIREE', 'ANNULEE_TRICHE'] },
         },
         include: {
           quiz: {
@@ -149,13 +154,13 @@ export class AnalyticsService {
       prisma.tentative.count({
         where: {
           quiz: { enseignantId },
-          statut: { in: ['TERMINEE', 'EXPIREE'] },
+          statut: { in: ['TERMINEE', 'EXPIREE', 'ANNULEE_TRICHE'] },
         },
       }),
       prisma.tentative.findMany({
         where: {
           quiz: { enseignantId },
-          statut: { in: ['TERMINEE', 'EXPIREE'] },
+          statut: { in: ['TERMINEE', 'EXPIREE', 'ANNULEE_TRICHE'] },
         },
         select: {
           score: true,
@@ -211,6 +216,8 @@ export class AnalyticsService {
           noteSur20,
           dateFin: a.dateFin,
           statut: a.statut,
+          nbAvertissementsTriche: a.nbAvertissementsTriche,
+          tricheDetectee: a.statut === 'ANNULEE_TRICHE' || a.nbAvertissementsTriche > 0,
         };
       }),
     };

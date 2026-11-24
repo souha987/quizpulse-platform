@@ -55,8 +55,8 @@ export class AttemptController {
   async recordWarning(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const tentativeId = req.params.id as string;
-      await attemptService.recordCheatWarning(tentativeId);
-      res.status(200).json({ message: 'Avertissement de sortie d\'écran enregistré' });
+      const result = await attemptService.recordCheatWarning(tentativeId);
+      res.status(200).json(result);
     } catch (error) {
       next(error);
     }

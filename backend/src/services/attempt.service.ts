@@ -118,6 +118,23 @@ export class AttemptService {
     }
 
     if (tentative.statut !== StatutTentative.EN_COURS) {
+      if (tentative.statut === StatutTentative.ANNULEE_TRICHE) {
+        const totalPointsPossible = tentative.quiz.questions.reduce((sum, q) => sum + q.points, 0);
+        return {
+          tentativeId: tentative.id,
+          statut: StatutTentative.ANNULEE_TRICHE,
+          estExpiree: false,
+          score: 0.0,
+          totalPointsPossible,
+          nbQuestionsCorrectes: 0,
+          nbQuestionsTotal: tentative.quiz.questions.length,
+          pourcentage: 0,
+          noteSur20: 0.0,
+          dureeSecondes: Math.round((new Date().getTime() - new Date(tentative.dateDebut).getTime()) / 1000),
+          nbAvertissementsTriche: tentative.nbAvertissementsTriche,
+          corrige: [],
+        };
+      }
       throw new AppError('Cette tentative a déjà été soumise ou clôturée', 400);
     }
 
@@ -258,7 +275,23 @@ export class AttemptService {
     if (!tentative) {
       throw new AppError('Tentative introuvable', 404);
     }
-    return attemptRepository.recordWarning(tentativeId);
+    const updated = await attemptRepository.recordWarning(tentativeId);
+    const totalPointsPossible = tentative.quiz.questions.reduce((sum, q) => sum + q.points, 0);
+
+    return {
+      tentativeId: updated.id,
+      statut: StatutTentative.ANNULEE_TRICHE,
+      estExpiree: false,
+      score: 0.0,
+      totalPointsPossible,
+      nbQuestionsCorrectes: 0,
+      nbQuestionsTotal: tentative.quiz.questions.length,
+      pourcentage: 0,
+      noteSur20: 0.0,
+      dureeSecondes: Math.round((new Date().getTime() - new Date(tentative.dateDebut).getTime()) / 1000),
+      nbAvertissementsTriche: updated.nbAvertissementsTriche,
+      corrige: [],
+    };
   }
 
   async saveProgress(

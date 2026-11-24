@@ -400,10 +400,13 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
                           children: recentSubmissions.map((sub) {
                             final student = (sub['studentName'] ?? 'Élève').toString();
                             final quizTitle = (sub['quizTitle'] ?? 'Évaluation').toString();
-                            final scoreSur20 = (sub['noteSur20'] as num?)?.toDouble() ?? 0.0;
+                            final isCheated = sub['statut'] == 'ANNULEE_TRICHE' ||
+                                (sub['tricheDetectee'] == true) ||
+                                ((sub['nbAvertissementsTriche'] as num?)?.toInt() ?? 0) > 0;
+                            final scoreSur20 = isCheated ? 0.0 : ((sub['noteSur20'] as num?)?.toDouble() ?? 0.0);
                             final dateFin = sub['dateFin'] != null ? DateTime.tryParse(sub['dateFin'].toString()) : null;
                             final timeAgo = dateFin != null ? _formatTimeAgo(dateFin) : 'Récemment';
-                            final isExcellent = scoreSur20 >= 14.0;
+                            final isExcellent = !isCheated && scoreSur20 >= 14.0;
 
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 10),
@@ -411,8 +414,9 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
                                 studentName: student,
                                 quizTitle: quizTitle,
                                 timeAgo: timeAgo,
-                                score: '${scoreSur20.toStringAsFixed(1)}/20 (${((scoreSur20 / 20.0) * 100).round()}%)',
+                                score: isCheated ? '0.0/20 (TRICHE)' : '${scoreSur20.toStringAsFixed(1)}/20 (${((scoreSur20 / 20.0) * 100).round()}%)',
                                 isExcellent: isExcellent,
+                                isCheated: isCheated,
                               ),
                             );
                           }).toList(),
@@ -901,13 +905,17 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
     required String timeAgo,
     required String score,
     required bool isExcellent,
+    bool isCheated = false,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isCheated ? const Color(0xFFFFF5F5) : Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: isCheated ? const Color(0xFFFECACA) : const Color(0xFFE2E8F0),
+          width: isCheated ? 1.3 : 1.0,
+        ),
       ),
       child: Row(
         children: [
@@ -915,12 +923,18 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: isExcellent ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+              color: isCheated
+                  ? const Color(0xFFFEE2E2)
+                  : (isExcellent ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC)),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              isExcellent ? Icons.check_circle_outline_rounded : Icons.star_outline_rounded,
-              color: isExcellent ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+              isCheated
+                  ? Icons.gavel_rounded
+                  : (isExcellent ? Icons.check_circle_outline_rounded : Icons.star_outline_rounded),
+              color: isCheated
+                  ? const Color(0xFFDC2626)
+                  : (isExcellent ? const Color(0xFF2563EB) : const Color(0xFF64748B)),
               size: 20,
             ),
           ),
@@ -929,13 +943,31 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  studentName,
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                Row(
+                  children: [
+                    Text(
+                      studentName,
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                    ),
+                    if (isCheated) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDC2626),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'TRICHE DÉTECTÉE',
+                          style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 Text(
                   quizTitle,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF71717A)),
+                  style: TextStyle(fontSize: 12, color: isCheated ? const Color(0xFFB91C1C) : const Color(0xFF71717A)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -950,7 +982,7 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: isExcellent ? const Color(0xFF2563EB) : const Color(0xFF475569),
+                  color: isCheated ? const Color(0xFFDC2626) : (isExcellent ? const Color(0xFF2563EB) : const Color(0xFF475569)),
                 ),
               ),
               Text(

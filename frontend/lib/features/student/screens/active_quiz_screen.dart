@@ -64,86 +64,65 @@ class _ActiveQuizScreenState extends ConsumerState<ActiveQuizScreen>
     final attemptState = ref.read(quizAttemptProvider);
     if (attemptState.isCompleted || attemptState.isSubmitting) return;
 
-    ref.read(quizAttemptProvider.notifier).recordCheatWarning();
-    final updatedWarnings = attemptState.nbWarnings + 1;
     _isWarningDialogOpen = true;
+    // Enregistrement et annulation immédiate de la tentative côté serveur
+    ref.read(quizAttemptProvider.notifier).recordCheatWarning();
 
-    if (updatedWarnings >= 3) {
-      // Clôture immédiate et automatique pour triche répétée (3 avertissements)
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.gavel_rounded, color: Color(0xFFDC2626), size: 28),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text('Examen Verrouillé (3/3)',
-                    style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold)),
+    // Annulation immédiate de l'épreuve sans avertissements (tolérance zéro triche)
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Row(
+          children: [
+            Icon(Icons.gavel_rounded, color: Color(0xFFDC2626), size: 30),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Évaluation Annulée (Triche)',
+                style: TextStyle(
+                  color: Color(0xFFDC2626),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16.5,
+                ),
               ),
-            ],
-          ),
-          content: const Text(
-            'Vous avez quitté l\'écran de l\'examen à 3 reprises.\n\nConformément aux règles académiques strictes, l\'examen est immédiatement verrouillé et votre copie est transmise pour notation.',
-            style: TextStyle(fontSize: 14),
-          ),
-          actions: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFDC2626),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _isWarningDialogOpen = false;
-                ref.read(quizAttemptProvider.notifier).submitQuiz(isAutoExpired: true);
-              },
-              child: const Text('Soumettre et Voir Résultat'),
             ),
           ],
         ),
-      );
-    } else {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 28),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text('Avertissement Sécurité ($updatedWarnings/3)',
-                    style: const TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-          content: Text(
-            'Attention ! Vous avez quitté l\'onglet ou l\'écran de l\'examen.\n\n'
-            'Il vous reste ${3 - updatedWarnings} avertissement${3 - updatedWarnings > 1 ? "s" : ""} avant la clôture automatique de votre copie.',
-            style: const TextStyle(fontSize: 14),
-          ),
-          actions: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFDC2626),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _isWarningDialogOpen = false;
-              },
-              child: const Text('Je retourne à mon examen'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Vous avez quitté la page de l\'évaluation ou changé d\'onglet.',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Conformément aux consignes de surveillance académique, toute sortie de page entraîne l\'annulation immédiate de votre épreuve.\n\nVotre copie est invalidée avec la note de 0/20 et l\'incident « Triche Détectée » a été directement notifié à votre enseignant.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.45),
             ),
           ],
         ),
-      );
-    }
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _isWarningDialogOpen = false;
+              ref.read(quizAttemptProvider.notifier).submitQuiz(isAutoExpired: true);
+            },
+            child: const Text('Voir le Résultat (0/20)', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _handleKeyEvent(KeyEvent event) {
@@ -560,8 +539,8 @@ class _ActiveQuizScreenState extends ConsumerState<ActiveQuizScreen>
                     const SizedBox(width: 4),
                     Text(
                       attemptState.nbWarnings > 0
-                          ? 'Avertissements : ${attemptState.nbWarnings}/3'
-                          : 'Examen Sécurisé',
+                          ? 'Triche Détectée (Annulé)'
+                          : 'Anti-Triche Strict (Sortie = 0/20)',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,

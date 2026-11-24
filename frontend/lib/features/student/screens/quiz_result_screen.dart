@@ -172,12 +172,15 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
       );
     }
 
-    final isSuccess = result.noteSur20 >= 10.0;
+    final isCheated = result.statut == 'ANNULEE_TRICHE' || result.nbAvertissementsTriche > 0;
+    final isSuccess = !isCheated && result.noteSur20 >= 10.0;
     final isStudent = authState.role == UserRole.etudiant || authState.role == UserRole.visiteur;
     final studentName = authState.user?.nomComplet ?? 'Candidat Évaluateur';
 
     String mention = 'Passable';
-    if (result.noteSur20 >= 16.0) {
+    if (isCheated) {
+      mention = 'Fraude (Annulé)';
+    } else if (result.noteSur20 >= 16.0) {
       mention = 'Très Bien';
     } else if (result.noteSur20 >= 14.0) {
       mention = 'Bien';
@@ -370,35 +373,47 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
                 child: Column(
                   children: [
                     EduMascot(
-                      mood: isSuccess ? MascotMood.celebrate : MascotMood.encourage,
+                      mood: isCheated ? MascotMood.encourage : (isSuccess ? MascotMood.celebrate : MascotMood.encourage),
                       size: 130,
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      isSuccess ? 'Bravo !' : 'Continue, tu y es presque !',
-                      style: const TextStyle(
+                      isCheated
+                          ? 'Tentative Annulée (Triche)'
+                          : (isSuccess ? 'Bravo !' : 'Continue, tu y es presque !'),
+                      style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF0F172A),
+                        color: isCheated ? const Color(0xFFDC2626) : const Color(0xFF0F172A),
                         letterSpacing: -0.5,
                       ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      isSuccess ? 'Félicitations ! Évaluation Validée 🎉' : 'Évaluation Non Validée',
+                      isCheated
+                          ? '⚠️ Fraude / Sortie d\'écran détectée'
+                          : (isSuccess ? 'Félicitations ! Évaluation Validée 🎉' : 'Évaluation Non Validée'),
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: isSuccess ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+                        color: isCheated
+                            ? const Color(0xFFDC2626)
+                            : (isSuccess ? const Color(0xFF16A34A) : const Color(0xFFDC2626)),
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      result.estExpiree
-                          ? 'Tentative terminée (temps imparti expiré)'
-                          : 'Copie corrigée et enregistrée sur les serveurs EduQuiz',
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                      isCheated
+                          ? 'Vous avez quitté la page du quiz pendant l\'épreuve. Votre tentative a été invalidée avec la note de 0/20 et transmise à votre enseignant.'
+                          : (result.estExpiree
+                              ? 'Tentative terminée (temps imparti expiré)'
+                              : 'Copie corrigée et enregistrée sur les serveurs EduQuiz'),
+                      style: TextStyle(
+                        color: isCheated ? const Color(0xFFB91C1C) : const Color(0xFF64748B),
+                        fontSize: 13,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
 
@@ -406,29 +421,31 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
+                        color: isCheated ? const Color(0xFFFEF2F2) : const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(color: isCheated ? const Color(0xFFFECACA) : const Color(0xFFE2E8F0)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           _buildMetricItem(
                             'Note finale',
-                            '${result.noteSur20} / 20',
-                            isSuccess ? const Color(0xFF65A30D) : const Color(0xFFDC2626),
+                            isCheated ? '0.0 / 20' : '${result.noteSur20} / 20',
+                            isCheated
+                                ? const Color(0xFFDC2626)
+                                : (isSuccess ? const Color(0xFF65A30D) : const Color(0xFFDC2626)),
                           ),
                           Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
                           _buildMetricItem(
                             'Score brut',
-                            '${result.score} / ${result.totalPointsPossible}',
-                            const Color(0xFF2563EB),
+                            isCheated ? '0.0 / ${result.totalPointsPossible}' : '${result.score} / ${result.totalPointsPossible}',
+                            isCheated ? const Color(0xFFDC2626) : const Color(0xFF2563EB),
                           ),
                           Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
                           _buildMetricItem(
                             'Taux Réussite',
-                            '${result.pourcentage} %',
-                            const Color(0xFF0F172A),
+                            isCheated ? '0 %' : '${result.pourcentage} %',
+                            isCheated ? const Color(0xFFDC2626) : const Color(0xFF0F172A),
                           ),
                           if (result.nbAvertissementsTriche > 0) ...[
                             Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),

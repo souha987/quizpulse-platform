@@ -289,13 +289,21 @@ class _TeacherAnalyticsScreenState extends ConsumerState<TeacherAnalyticsScreen>
                       variationText: 'Total',
                       isVariationPositive: true,
                     ),
-                    const EdTechStatCard(
-                      title: 'Alertes anti-triche',
-                      value: '0',
-                      subtitle: 'Intégrité respectée',
-                      icon: Icons.verified_user_outlined,
-                      variationText: 'Conforme',
-                      isVariationPositive: true,
+                    Builder(
+                      builder: (context) {
+                        final cheatCount = studentAttempts.where((att) =>
+                            att['statut'] == 'ANNULEE_TRICHE' ||
+                            att['tricheDetectee'] == true ||
+                            ((att['nbAvertissementsTriche'] as num?)?.toInt() ?? 0) > 0).length;
+                        return EdTechStatCard(
+                          title: 'Alertes anti-triche',
+                          value: '$cheatCount',
+                          subtitle: cheatCount > 0 ? '$cheatCount cas de triche détecté(s)' : 'Intégrité respectée',
+                          icon: cheatCount > 0 ? Icons.gavel_rounded : Icons.verified_user_outlined,
+                          variationText: cheatCount > 0 ? 'Fraude' : 'Conforme',
+                          isVariationPositive: cheatCount == 0,
+                        );
+                      },
                     ),
                   ];
 
@@ -488,25 +496,48 @@ class _TeacherAnalyticsScreenState extends ConsumerState<TeacherAnalyticsScreen>
                             DataColumn(label: Text('Intégrité Anti-Triche', style: TextStyle(fontWeight: FontWeight.w800))),
                           ],
                           rows: studentAttempts.map((att) {
-                            final note = (att['noteSur20'] as num?)?.toDouble() ?? 0.0;
-                            final isPass = note >= 10.0;
-                            final warnings = (att['nbAvertissementsTriche'] as num?)?.toInt() ?? 0;
+                            final isCheated = att['statut'] == 'ANNULEE_TRICHE' ||
+                                (att['tricheDetectee'] == true) ||
+                                ((att['nbAvertissementsTriche'] as num?)?.toInt() ?? 0) > 0;
+                            final note = isCheated ? 0.0 : ((att['noteSur20'] as num?)?.toDouble() ?? 0.0);
+                            final isPass = !isCheated && note >= 10.0;
+                            final studentDisplayName = att['etudiantNom'] ??
+                                '${att['prenom'] ?? ""} ${att['nom'] ?? ""}'.trim();
+                            final initial = (att['prenom'] as String?)?.isNotEmpty == true
+                                ? att['prenom'][0]
+                                : (studentDisplayName.isNotEmpty ? studentDisplayName[0] : "E");
 
                             return DataRow(
+                              color: isCheated ? MaterialStateProperty.all(const Color(0xFFFEF2F2)) : null,
                               cells: [
                                 DataCell(
                                   Row(
                                     children: [
                                       CircleAvatar(
                                         radius: 14,
-                                        backgroundColor: const Color(0xFFEEF2FF),
+                                        backgroundColor: isCheated ? const Color(0xFFFEE2E2) : const Color(0xFFEEF2FF),
                                         child: Text(
-                                          '${(att['prenom'] as String?)?.isNotEmpty == true ? att['prenom'][0] : "E"}',
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF2563EB)),
+                                          '$initial',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                            color: isCheated ? const Color(0xFFDC2626) : const Color(0xFF2563EB),
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      Text('${att['prenom']} ${att['nom']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                      Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(studentDisplayName, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                          if (isCheated)
+                                            const Text(
+                                              'A quitté l\'épreuve',
+                                              style: TextStyle(fontSize: 10, color: Color(0xFFDC2626), fontWeight: FontWeight.bold),
+                                            ),
+                                        ],
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -515,37 +546,50 @@ class _TeacherAnalyticsScreenState extends ConsumerState<TeacherAnalyticsScreen>
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: isPass ? const Color(0xFFECFDF5) : const Color(0xFFFFF1F2),
+                                      color: isCheated
+                                          ? const Color(0xFFFEE2E2)
+                                          : (isPass ? const Color(0xFFECFDF5) : const Color(0xFFFFF1F2)),
                                       borderRadius: BorderRadius.circular(8),
+                                      border: isCheated ? Border.all(color: const Color(0xFFFCA5A5)) : null,
                                     ),
                                     child: Text(
-                                      '$note / 20',
+                                      isCheated ? '0.0 / 20' : '$note / 20',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w900,
-                                        color: isPass ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                                        color: isCheated
+                                            ? const Color(0xFFDC2626)
+                                            : (isPass ? const Color(0xFF10B981) : const Color(0xFFDC2626)),
                                       ),
                                     ),
                                   ),
                                 ),
-                                DataCell(Text('${att['score']} pts')),
+                                DataCell(Text(isCheated ? '0 pts (Annulé)' : '${att['score']} pts')),
                                 DataCell(
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        warnings == 0 ? Icons.check_circle_outline : Icons.warning_amber_rounded,
-                                        color: warnings == 0 ? const Color(0xFF10B981) : const Color(0xFFDC2626),
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        warnings == 0 ? 'Conforme' : '$warnings avertissement(s)',
-                                        style: TextStyle(
-                                          color: warnings == 0 ? const Color(0xFF10B981) : const Color(0xFFDC2626),
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 12,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: isCheated ? const Color(0xFFDC2626) : const Color(0xFFECFDF5),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          isCheated ? Icons.gavel_rounded : Icons.check_circle_outline,
+                                          color: isCheated ? Colors.white : const Color(0xFF10B981),
+                                          size: 14,
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          isCheated ? 'TRICHE DÉTECTÉE' : 'Conforme (Intégrité OK)',
+                                          style: TextStyle(
+                                            color: isCheated ? Colors.white : const Color(0xFF047857),
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
