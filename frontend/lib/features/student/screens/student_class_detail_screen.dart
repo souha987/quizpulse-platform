@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,6 +26,7 @@ class _StudentClassDetailScreenState extends ConsumerState<StudentClassDetailScr
   Map<String, dynamic>? _classe;
   bool _isLoading = true;
   String? _errorMessage;
+  Timer? _refreshTimer;
 
   int _selectedTab = 0; // 0: Quiz, 1: Membres / Camarades
   final TextEditingController _searchCtrl = TextEditingController();
@@ -34,30 +36,40 @@ class _StudentClassDetailScreenState extends ConsumerState<StudentClassDetailScr
   void initState() {
     super.initState();
     _loadClassDetails();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) _loadClassDetails(silent: true);
+    });
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _loadClassDetails() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  Future<void> _loadClassDetails({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
     try {
       final res = await apiClient.get('/classes/${widget.classId}');
-      setState(() {
-        _classe = res.data as Map<String, dynamic>;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _classe = res.data as Map<String, dynamic>;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = getErrorMessage(e, 'Impossible de charger la classe');
-      });
+      if (mounted && !silent) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = getErrorMessage(e, 'Impossible de charger la classe');
+        });
+      }
     }
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,12 +28,24 @@ class _TeacherAnalyticsScreenState extends ConsumerState<TeacherAnalyticsScreen>
   Map<String, dynamic>? _analytics;
   bool _isLoading = true;
   String? _errorMessage;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _selectedQuizId = widget.quizId;
     _initializeData();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 6), (_) {
+      if (mounted && _selectedQuizId != null) {
+        _loadAnalyticsForQuiz(_selectedQuizId!, silent: true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _initializeData() async {
@@ -63,23 +76,29 @@ class _TeacherAnalyticsScreenState extends ConsumerState<TeacherAnalyticsScreen>
     }
   }
 
-  Future<void> _loadAnalyticsForQuiz(String qId) async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  Future<void> _loadAnalyticsForQuiz(String qId, {bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       final res = await apiClient.get('/analytics/quiz/$qId');
-      setState(() {
-        _analytics = res.data as Map<String, dynamic>;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _analytics = res.data as Map<String, dynamic>;
+          if (!silent) _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = getErrorMessage(e, 'Impossible de charger les analytiques de ce quiz');
-      });
+      if (mounted && !silent) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = getErrorMessage(e, 'Impossible de charger les analytiques de ce quiz');
+        });
+      }
     }
   }
 

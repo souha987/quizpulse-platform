@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +22,7 @@ class StudentQuizzesScreen extends ConsumerStatefulWidget {
 class _StudentQuizzesScreenState extends ConsumerState<StudentQuizzesScreen> {
   List<QuizModel> _quizzes = [];
   bool _isLoading = true;
+  Timer? _refreshTimer;
   String? _selectedClassId; // null = toutes les classes
   String _selectedStatusFilter = 'TOUS'; // TOUS, A_FAIRE, TERMINE
   String _searchQuery = '';
@@ -29,21 +31,34 @@ class _StudentQuizzesScreenState extends ConsumerState<StudentQuizzesScreen> {
   void initState() {
     super.initState();
     _loadQuizzes();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) _loadQuizzes(silent: true);
+    });
   }
 
-  Future<void> _loadQuizzes() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadQuizzes({bool silent = false}) async {
+    if (!silent) setState(() => _isLoading = true);
     try {
       final res = await apiClient.get('/quiz/student/assigned');
       final list = (res.data as List<dynamic>? ?? [])
           .map((item) => QuizModel.fromJson(item as Map<String, dynamic>))
           .toList();
-      setState(() {
-        _quizzes = list;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _quizzes = list;
+          _isLoading = false;
+        });
+      }
     } catch (_) {
-      setState(() => _isLoading = false);
+      if (mounted && !silent) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

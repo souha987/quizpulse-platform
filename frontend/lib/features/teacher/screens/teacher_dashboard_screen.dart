@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,15 +27,25 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
   Map<String, dynamic>? _subData;
   Map<String, dynamic>? _overview;
   bool _isLoading = true;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadTeacherData();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) _loadTeacherData(silent: true);
+    });
   }
 
-  Future<void> _loadTeacherData() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadTeacherData({bool silent = false}) async {
+    if (!silent) setState(() => _isLoading = true);
     try {
       List<QuizModel> quizzesList = [];
       try {
@@ -62,15 +73,19 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
         overview = overviewRes.data as Map<String, dynamic>?;
       } catch (_) {}
 
-      setState(() {
-        _quizzes = quizzesList;
-        _subData = sub;
-        _classes = classesList;
-        _overview = overview;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _quizzes = quizzesList;
+          _subData = sub;
+          _classes = classesList;
+          _overview = overview;
+          _isLoading = false;
+        });
+      }
     } catch (_) {
-      setState(() => _isLoading = false);
+      if (mounted && !silent) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

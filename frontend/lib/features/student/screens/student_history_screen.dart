@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,27 +21,41 @@ class StudentHistoryScreen extends ConsumerStatefulWidget {
 class _StudentHistoryScreenState extends ConsumerState<StudentHistoryScreen> {
   List<AttemptHistoryItemModel> _attempts = [];
   bool _isLoading = true;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadHistory();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+      if (mounted) _loadHistory(silent: true);
+    });
   }
 
-  Future<void> _loadHistory() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadHistory({bool silent = false}) async {
+    if (!silent) setState(() => _isLoading = true);
     try {
       final res = await apiClient.get('/attempts/my');
       final list = (res.data as List<dynamic>? ?? [])
           .map((item) => AttemptHistoryItemModel.fromJson(item as Map<String, dynamic>))
           .toList();
 
-      setState(() {
-        _attempts = list;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _attempts = list;
+          _isLoading = false;
+        });
+      }
     } catch (_) {
-      setState(() => _isLoading = false);
+      if (mounted && !silent) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

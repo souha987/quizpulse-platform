@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,28 +24,42 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
   List<dynamic> _myClasses = [];
   List<AttemptHistoryItemModel> _recentAttempts = [];
   bool _isLoading = true;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadDashboardData();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) _loadDashboardData(silent: true);
+    });
   }
 
-  Future<void> _loadDashboardData() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadDashboardData({bool silent = false}) async {
+    if (!silent) setState(() => _isLoading = true);
     try {
       final classesRes = await apiClient.get('/classes/student');
       final attemptsRes = await apiClient.get('/attempts/my');
       final attemptsList = (attemptsRes.data as List<dynamic>? ?? [])
           .map((a) => AttemptHistoryItemModel.fromJson(a as Map<String, dynamic>))
           .toList();
-      setState(() {
-        _myClasses = classesRes.data as List<dynamic>;
-        _recentAttempts = attemptsList;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _myClasses = classesRes.data as List<dynamic>;
+          _recentAttempts = attemptsList;
+          _isLoading = false;
+        });
+      }
     } catch (_) {
-      setState(() => _isLoading = false);
+      if (mounted && !silent) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

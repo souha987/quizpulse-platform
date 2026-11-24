@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,23 +15,37 @@ class AdminDashboardScreen extends ConsumerStatefulWidget {
 class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   Map<String, dynamic>? _metrics;
   bool _isLoading = true;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadMetrics();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) _loadMetrics(silent: true);
+    });
   }
 
-  Future<void> _loadMetrics() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadMetrics({bool silent = false}) async {
+    if (!silent) setState(() => _isLoading = true);
     try {
       final res = await apiClient.get('/admin/metrics');
-      setState(() {
-        _metrics = res.data as Map<String, dynamic>;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _metrics = res.data as Map<String, dynamic>;
+          _isLoading = false;
+        });
+      }
     } catch (_) {
-      setState(() => _isLoading = false);
+      if (mounted && !silent) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

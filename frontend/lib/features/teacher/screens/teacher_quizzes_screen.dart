@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,6 +25,7 @@ class _TeacherQuizzesScreenState extends ConsumerState<TeacherQuizzesScreen> {
   List<QuizModel> _quizzes = [];
   Map<String, dynamic>? _subData;
   bool _isLoading = true;
+  Timer? _refreshTimer;
   String _searchQuery = '';
   String _statusFilter = 'TOUS'; // TOUS, PUBLIC, PRIVE
 
@@ -31,10 +33,19 @@ class _TeacherQuizzesScreenState extends ConsumerState<TeacherQuizzesScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) _loadData(silent: true);
+    });
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadData({bool silent = false}) async {
+    if (!silent) setState(() => _isLoading = true);
     try {
       final quizRes = await apiClient.get('/quiz/teacher');
       final subRes = await apiClient.get('/subscriptions/my');
@@ -43,13 +54,17 @@ class _TeacherQuizzesScreenState extends ConsumerState<TeacherQuizzesScreen> {
           .map((item) => QuizModel.fromJson(item as Map<String, dynamic>))
           .toList();
 
-      setState(() {
-        _quizzes = list;
-        _subData = subRes.data as Map<String, dynamic>?;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _quizzes = list;
+          _subData = subRes.data as Map<String, dynamic>?;
+          _isLoading = false;
+        });
+      }
     } catch (_) {
-      setState(() => _isLoading = false);
+      if (mounted && !silent) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

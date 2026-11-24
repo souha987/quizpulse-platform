@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -19,15 +20,28 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   bool _isLoading = true;
   String _selectedRoleFilter = 'TOUS'; // 'TOUS', 'ENSEIGNANT', 'ETUDIANT', 'ADMIN'
   final TextEditingController _searchCtrl = TextEditingController();
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadUsers();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted && _searchCtrl.text.trim().isEmpty) {
+        _loadUsers(silent: true);
+      }
+    });
   }
 
-  Future<void> _loadUsers() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadUsers({bool silent = false}) async {
+    if (!silent) setState(() => _isLoading = true);
     try {
       final queryParams = <String, dynamic>{};
       if (_searchCtrl.text.trim().isNotEmpty) {
@@ -35,12 +49,16 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       }
 
       final res = await apiClient.get('/admin/users', queryParameters: queryParams);
-      setState(() {
-        _users = res.data['users'] as List<dynamic>? ?? [];
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _users = res.data['users'] as List<dynamic>? ?? [];
+          _isLoading = false;
+        });
+      }
     } catch (_) {
-      setState(() => _isLoading = false);
+      if (mounted && !silent) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

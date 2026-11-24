@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,23 +20,37 @@ class StudentClassesScreen extends ConsumerStatefulWidget {
 class _StudentClassesScreenState extends ConsumerState<StudentClassesScreen> {
   List<dynamic> _classes = [];
   bool _isLoading = true;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadClasses();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) _loadClasses(silent: true);
+    });
   }
 
-  Future<void> _loadClasses() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadClasses({bool silent = false}) async {
+    if (!silent) setState(() => _isLoading = true);
     try {
       final res = await apiClient.get('/classes/student');
-      setState(() {
-        _classes = res.data as List<dynamic>;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _classes = res.data as List<dynamic>;
+          _isLoading = false;
+        });
+      }
     } catch (_) {
-      setState(() => _isLoading = false);
+      if (mounted && !silent) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
