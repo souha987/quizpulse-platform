@@ -15,7 +15,7 @@ export class ClassService {
   async createClass(nom: string, enseignantId: string) {
     const trimmedNom = nom.trim();
 
-    // Règle d'unicité : un enseignant ne peut pas avoir deux classes avec le même nom
+    // Règle d'unicité : un enseignant ne peut pas avoir deux classes actives avec le même nom
     const existingClass = await prisma.classe.findFirst({
       where: {
         enseignantId,
@@ -23,6 +23,7 @@ export class ClassService {
           equals: trimmedNom,
           mode: 'insensitive',
         },
+        estSupprimee: false,
       },
     });
 
@@ -45,7 +46,7 @@ export class ClassService {
 
     const maxClasses = activeSub?.offre?.quotaClasses ?? 2;
     if (maxClasses !== -1) {
-      const currentClassCount = await prisma.classe.count({ where: { enseignantId } });
+      const currentClassCount = await prisma.classe.count({ where: { enseignantId, estSupprimee: false } });
       if (currentClassCount >= maxClasses) {
         throw new AppError(
           `Limite atteinte (${currentClassCount}/${maxClasses} classes). Passez à l'abonnement Pro pour créer des classes virtuelles illimitées.`,
@@ -77,8 +78,8 @@ export class ClassService {
       throw new AppError('Classe introuvable', 404);
     }
 
-    if (role === 'ENSEIGNANT' && classe.enseignantId !== userId) {
-      throw new AppError('Accès non autorisé à cette classe', 403);
+    if (role === 'ENSEIGNANT' && (classe.enseignantId !== userId || classe.estSupprimee)) {
+      throw new AppError('Accès non autorisé ou classe supprimée', 404);
     }
 
     if (role === 'ETUDIANT') {
@@ -171,8 +172,8 @@ export class ClassService {
 
   async updateClass(classeId: string, nom: string, teacherId: string, role?: string) {
     const classe = await classRepository.findById(classeId);
-    if (!classe) {
-      throw new AppError('Classe introuvable', 404);
+    if (!classe || classe.estSupprimee) {
+      throw new AppError('Classe introuvable ou supprimée', 404);
     }
 
     if (role === 'ENSEIGNANT' && classe.enseignantId !== teacherId) {
@@ -180,7 +181,7 @@ export class ClassService {
     }
 
     const trimmedNom = nom.trim();
-    // Règle d'unicité : un enseignant ne peut pas avoir deux classes avec le même nom
+    // Règle d'unicité : un enseignant ne peut pas avoir deux classes actives avec le même nom
     const duplicate = await prisma.classe.findFirst({
       where: {
         enseignantId: classe.enseignantId,
@@ -189,6 +190,7 @@ export class ClassService {
           equals: trimmedNom,
           mode: 'insensitive',
         },
+        estSupprimee: false,
       },
     });
 
@@ -204,8 +206,8 @@ export class ClassService {
 
   async deleteClass(classeId: string, teacherId: string, role?: string) {
     const classe = await classRepository.findById(classeId);
-    if (!classe) {
-      throw new AppError('Classe introuvable', 404);
+    if (!classe || classe.estSupprimee) {
+      throw new AppError('Classe introuvable ou déjà supprimée', 404);
     }
 
     if (role === 'ENSEIGNANT' && classe.enseignantId !== teacherId) {

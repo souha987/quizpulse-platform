@@ -189,6 +189,45 @@ class _StudentClassDetailScreenState extends ConsumerState<StudentClassDetailScr
 
             const SizedBox(height: 16),
 
+            // Bandeau d'information si la classe a été supprimée par l'enseignant
+            if (_classe!['estSupprimee'] == true) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFFCA5A5), width: 1.2),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 26),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Cette classe a été supprimée par l\'enseignant',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14.5,
+                              color: Color(0xFF991B1B),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Cette fiche reste affichée dans votre espace pour assurer la traçabilité de votre parcours. Les nouvelles inscriptions et sessions sont désormais closes.',
+                            style: TextStyle(fontSize: 12.5, color: const Color(0xFFB91C1C).withOpacity(0.9)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // En-tête de la classe de l'élève
             Container(
               padding: const EdgeInsets.all(24),

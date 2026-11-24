@@ -13,8 +13,11 @@ export class ClassRepository {
   }
 
   async findByCode(codeClasse: string) {
-    return prisma.classe.findUnique({
-      where: { codeClasse: codeClasse.toUpperCase() },
+    return prisma.classe.findFirst({
+      where: {
+        codeClasse: codeClasse.toUpperCase(),
+        estSupprimee: false,
+      },
       include: {
         enseignant: {
           select: { id: true, nom: true, prenom: true },
@@ -63,7 +66,10 @@ export class ClassRepository {
 
   async listByTeacher(enseignantId: string) {
     return prisma.classe.findMany({
-      where: { enseignantId },
+      where: {
+        enseignantId,
+        estSupprimee: false,
+      },
       include: {
         _count: {
           select: {
@@ -144,8 +150,12 @@ export class ClassRepository {
   }
 
   async delete(id: string): Promise<Classe> {
-    return prisma.classe.delete({
+    return prisma.classe.update({
       where: { id },
+      data: {
+        estSupprimee: true,
+        dateSuppression: new Date(),
+      },
     });
   }
 }

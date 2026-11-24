@@ -6,6 +6,8 @@ class ClassModel {
   final String? enseignantNom;
   final int nbEtudiants;
   final int nbQuiz;
+  final bool estSupprimee;
+  final DateTime? dateSuppression;
 
   ClassModel({
     required this.id,
@@ -15,6 +17,8 @@ class ClassModel {
     this.enseignantNom,
     this.nbEtudiants = 0,
     this.nbQuiz = 0,
+    this.estSupprimee = false,
+    this.dateSuppression,
   });
 
   factory ClassModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +36,10 @@ class ClassModel {
       enseignantNom: enseignantNom,
       nbEtudiants: json['_count']?['etudiants'] ?? 0,
       nbQuiz: json['_count']?['quizAssignes'] ?? 0,
+      estSupprimee: json['estSupprimee'] ?? false,
+      dateSuppression: json['dateSuppression'] != null
+          ? DateTime.tryParse(json['dateSuppression'].toString())
+          : null,
     );
   }
 }

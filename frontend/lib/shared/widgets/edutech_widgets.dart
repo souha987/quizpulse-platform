@@ -780,6 +780,8 @@ class EdTechClassCard extends StatelessWidget {
   final Color headerBgColor;
   final Color symbolColor;
   final VoidCallback onViewClass;
+  final bool isDeleted;
+  final String? deletedDateStr;
 
   const EdTechClassCard({
     super.key,
@@ -791,15 +793,20 @@ class EdTechClassCard extends StatelessWidget {
     this.headerBgColor = const Color(0xFFEFF6FF),
     this.symbolColor = const Color(0xFF2563EB),
     required this.onViewClass,
+    this.isDeleted = false,
+    this.deletedDateStr,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDeleted ? const Color(0xFFFFFDFD) : Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: isDeleted ? const Color(0xFFFCA5A5) : const Color(0xFFE2E8F0),
+          width: isDeleted ? 1.4 : 1.0,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -808,7 +815,7 @@ class EdTechClassCard extends StatelessWidget {
           Container(
             height: 70,
             width: double.infinity,
-            color: const Color(0xFFF8FAFC),
+            color: isDeleted ? const Color(0xFFFEF2F2) : const Color(0xFFF8FAFC),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
@@ -816,30 +823,59 @@ class EdTechClassCard extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
+                    color: isDeleted ? const Color(0xFFFEE2E2) : const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Center(
-                    child: Icon(Icons.school_outlined, color: const Color(0xFF2563EB), size: 20),
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Text(
-                    '$studentCount élèves',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF475569),
+                    child: Icon(
+                      isDeleted ? Icons.delete_outline_rounded : Icons.school_outlined,
+                      color: isDeleted ? const Color(0xFFDC2626) : const Color(0xFF2563EB),
+                      size: 20,
                     ),
                   ),
                 ),
+                const Spacer(),
+                if (isDeleted)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEE2E2),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: const Color(0xFFFCA5A5)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.warning_amber_rounded, size: 12, color: Color(0xFFDC2626)),
+                        SizedBox(width: 4),
+                        Text(
+                          'Supprimée par l\'enseignant',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFFB91C1C),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Text(
+                      '$studentCount élèves',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -848,14 +884,22 @@ class EdTechClassCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
-                    letterSpacing: -0.3,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: isDeleted ? const Color(0xFF64748B) : const Color(0xFF0F172A),
+                          letterSpacing: -0.3,
+                          decoration: isDeleted ? TextDecoration.lineThrough : null,
+                          decorationColor: const Color(0xFFDC2626),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -865,28 +909,44 @@ class EdTechClassCard extends StatelessWidget {
                     color: Color(0xFF64748B),
                   ),
                 ),
+                if (isDeleted && deletedDateStr != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Clôturée le $deletedDateStr',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFDC2626),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 14),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       'Code : $classCode',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontFamily: 'monospace',
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF334155),
+                        color: isDeleted ? const Color(0xFF94A3B8) : const Color(0xFF334155),
                       ),
                     ),
                     OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF2563EB),
-                        side: const BorderSide(color: Color(0xFFBFDBFE)),
+                        foregroundColor: isDeleted ? const Color(0xFF64748B) : const Color(0xFF2563EB),
+                        side: BorderSide(
+                          color: isDeleted ? const Color(0xFFCBD5E1) : const Color(0xFFBFDBFE),
+                        ),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                       ),
                       onPressed: onViewClass,
-                      child: const Text('Ouvrir', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      child: Text(
+                        isDeleted ? 'Voir archive' : 'Ouvrir',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ],
                 ),

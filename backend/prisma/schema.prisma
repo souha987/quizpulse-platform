@@ -75,17 +75,20 @@ model Utilisateur {
 }
 
 model Classe {
-  id             String            @id @default(uuid())
-  nom            String
-  codeClasse     String            @unique // Ex: ABC123
-  enseignantId   String
-  enseignant     Utilisateur       @relation("EnseignantClasses", fields: [enseignantId], references: [id], onDelete: Cascade)
-  dateCreation   DateTime          @default(now())
+  id              String            @id @default(uuid())
+  nom             String
+  codeClasse      String            @unique // Ex: ABC123
+  enseignantId    String
+  enseignant      Utilisateur       @relation("EnseignantClasses", fields: [enseignantId], references: [id], onDelete: Cascade)
+  dateCreation    DateTime          @default(now())
+  estSupprimee    Boolean           @default(false)
+  dateSuppression DateTime?
   
-  etudiants      EtudiantClasse[]
-  quizAssignes   Quiz[]
+  etudiants       EtudiantClasse[]
+  quizAssignes    Quiz[]
 
   @@index([enseignantId])
+  @@index([estSupprimee])
 }
 
 model EtudiantClasse {

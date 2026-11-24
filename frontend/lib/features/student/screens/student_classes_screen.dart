@@ -270,6 +270,14 @@ class _StudentClassesScreenState extends ConsumerState<StudentClassesScreen> {
                       final sym = symbols[entry.key % symbols.length];
 
                       final classId = (classe['id'] ?? '').toString();
+                      final isDeleted = (classe['estSupprimee'] == true);
+                      String? deletedDateStr;
+                      if (classe['dateSuppression'] != null) {
+                        final d = DateTime.tryParse(classe['dateSuppression'].toString());
+                        if (d != null) {
+                          deletedDateStr = '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+                        }
+                      }
 
                       return SizedBox(
                         width: itemWidth,
@@ -286,6 +294,8 @@ class _StudentClassesScreenState extends ConsumerState<StudentClassesScreen> {
                               iconSymbol: sym,
                               headerBgColor: bg,
                               symbolColor: color,
+                              isDeleted: isDeleted,
+                              deletedDateStr: deletedDateStr,
                               onViewClass: () {
                                 if (classId.isNotEmpty) {
                                   context.push('/student/classes/$classId');
