@@ -70,6 +70,8 @@ class AttemptResultModel {
   final double noteSur20;
   final int dureeSecondes;
   final int nbAvertissementsTriche;
+  final int nbQuestionsCorrectes;
+  final int nbQuestionsTotal;
   final List<QuestionReviewModel> corrige;
 
   AttemptResultModel({
@@ -82,6 +84,8 @@ class AttemptResultModel {
     required this.noteSur20,
     required this.dureeSecondes,
     required this.nbAvertissementsTriche,
+    required this.nbQuestionsCorrectes,
+    required this.nbQuestionsTotal,
     required this.corrige,
   });
 
@@ -89,6 +93,10 @@ class AttemptResultModel {
     final corr = (json['corrige'] as List<dynamic>? ?? [])
         .map((c) => QuestionReviewModel.fromJson(c as Map<String, dynamic>))
         .toList();
+
+    final int computedCorrect = json['nbQuestionsCorrectes'] ??
+        corr.where((q) => q.estCorrecte).length;
+    final int computedTotal = json['nbQuestionsTotal'] ?? corr.length;
 
     return AttemptResultModel(
       tentativeId: json['tentativeId'] ?? '',
@@ -100,6 +108,8 @@ class AttemptResultModel {
       noteSur20: (json['noteSur20'] as num?)?.toDouble() ?? 0.0,
       dureeSecondes: json['dureeSecondes'] ?? 0,
       nbAvertissementsTriche: json['nbAvertissementsTriche'] ?? 0,
+      nbQuestionsCorrectes: computedCorrect,
+      nbQuestionsTotal: computedTotal,
       corrige: corr,
     );
   }

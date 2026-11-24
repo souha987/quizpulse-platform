@@ -185,9 +185,9 @@ class _QuizResultScreenState extends ConsumerState<QuizResultScreen> {
       mention = 'Assez Bien';
     }
 
-    final errorsCount = result.corrige.where((q) => !q.estCorrecte).length;
-    final successCount = result.corrige.where((q) => q.estCorrecte).length;
-    final totalCount = result.corrige.length;
+    final totalCount = result.nbQuestionsTotal > 0 ? result.nbQuestionsTotal : result.corrige.length;
+    final successCount = result.nbQuestionsTotal > 0 ? result.nbQuestionsCorrectes : result.corrige.where((q) => q.estCorrecte).length;
+    final errorsCount = totalCount >= successCount ? totalCount - successCount : 0;
     final minutes = result.dureeSecondes ~/ 60;
     final seconds = result.dureeSecondes % 60;
     final timeSpentStr = minutes > 0

@@ -23,6 +23,7 @@ class _ActiveQuizScreenState extends ConsumerState<ActiveQuizScreen>
     with WidgetsBindingObserver {
   final FocusNode _keyboardFocusNode = FocusNode();
   bool _hideTimer = false;
+  bool _isWarningDialogOpen = false;
 
   @override
   void initState() {
@@ -43,52 +44,106 @@ class _ActiveQuizScreenState extends ConsumerState<ActiveQuizScreen>
     super.dispose();
   }
 
-  // Détection Anti-Triche : perte de focus / passage en arrière-plan
+  // Détection Anti-Triche : perte de focus / changement d'onglet / passage en arrière-plan
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final attemptState = ref.read(quizAttemptProvider);
-    final isSecured = attemptState.quiz?.modeExamenSecurise ?? false;
 
-    if (isSecured && !attemptState.isCompleted) {
-      if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    // Mode examen sécurisé actif pour tout le déroulement du quiz
+    if (!attemptState.isCompleted && !attemptState.isSubmitting && attemptState.questions.isNotEmpty) {
+      if (state == AppLifecycleState.paused ||
+          state == AppLifecycleState.inactive ||
+          state == AppLifecycleState.hidden) {
         _handleCheatingDetected();
       }
     }
   }
 
   void _handleCheatingDetected() {
-    ref.read(quizAttemptProvider.notifier).recordCheatWarning();
+    if (_isWarningDialogOpen || !mounted) return;
+    final attemptState = ref.read(quizAttemptProvider);
+    if (attemptState.isCompleted || attemptState.isSubmitting) return;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 28),
-            SizedBox(width: 8),
-            Text('Avertissement Anti-Triche',
-                style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold)),
+    ref.read(quizAttemptProvider.notifier).recordCheatWarning();
+    final updatedWarnings = attemptState.nbWarnings + 1;
+    _isWarningDialogOpen = true;
+
+    if (updatedWarnings >= 3) {
+      // Clôture immédiate et automatique pour triche répétée (3 avertissements)
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.gavel_rounded, color: Color(0xFFDC2626), size: 28),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('Examen Verrouillé (3/3)',
+                    style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          content: const Text(
+            'Vous avez quitté l\'écran de l\'examen à 3 reprises.\n\nConformément aux règles académiques strictes, l\'examen est immédiatement verrouillé et votre copie est transmise pour notation.',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFDC2626),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _isWarningDialogOpen = false;
+                ref.read(quizAttemptProvider.notifier).submitQuiz(isAutoExpired: true);
+              },
+              child: const Text('Soumettre et Voir Résultat'),
+            ),
           ],
         ),
-        content: const Text(
-          'Vous avez quitté l\'écran de l\'examen ou changé d\'onglet. Cet incident a été consigné et transmis à votre enseignant.',
-          style: TextStyle(fontSize: 14),
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFDC2626),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('J\'ai compris et je reprends'),
+      );
+    } else {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 28),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Avertissement Sécurité ($updatedWarnings/3)',
+                    style: const TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold)),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+          content: Text(
+            'Attention ! Vous avez quitté l\'onglet ou l\'écran de l\'examen.\n\n'
+            'Il vous reste ${3 - updatedWarnings} avertissement${3 - updatedWarnings > 1 ? "s" : ""} avant la clôture automatique de votre copie.',
+            style: const TextStyle(fontSize: 14),
+          ),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFDC2626),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _isWarningDialogOpen = false;
+              },
+              child: const Text('Je retourne à mon examen'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   void _handleKeyEvent(KeyEvent event) {
@@ -478,45 +533,46 @@ class _ActiveQuizScreenState extends ConsumerState<ActiveQuizScreen>
               ),
             ),
             actions: [
-              // Indicateur Avertissements Triche si Mode Sécurisé
-              if (attemptState.quiz?.modeExamenSecurise == true)
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
+              // Indicateur Examen Sécurisé et Avertissements
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: attemptState.nbWarnings > 0
+                      ? const Color(0xFFFEE2E2)
+                      : const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
                     color: attemptState.nbWarnings > 0
-                        ? const Color(0xFFFEE2E2)
-                        : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: attemptState.nbWarnings > 0
-                          ? const Color(0xFFDC2626)
-                          : const Color(0xFFCBD5E1),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.shield,
-                        size: 16,
-                        color: attemptState.nbWarnings > 0
-                            ? const Color(0xFFDC2626)
-                            : const Color(0xFF64748B),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Triche : ${attemptState.nbWarnings}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: attemptState.nbWarnings > 0
-                              ? const Color(0xFFDC2626)
-                              : const Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
+                        ? const Color(0xFFDC2626)
+                        : const Color(0xFF16A34A),
                   ),
                 ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.shield,
+                      size: 16,
+                      color: attemptState.nbWarnings > 0
+                          ? const Color(0xFFDC2626)
+                          : const Color(0xFF16A34A),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      attemptState.nbWarnings > 0
+                          ? 'Avertissements : ${attemptState.nbWarnings}/3'
+                          : 'Examen Sécurisé',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: attemptState.nbWarnings > 0
+                            ? const Color(0xFFDC2626)
+                            : const Color(0xFF16A34A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
               // Compte à rebours interactif (Toggle Masquer / Afficher)
               InkWell(

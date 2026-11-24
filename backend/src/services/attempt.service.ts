@@ -234,6 +234,8 @@ export class AttemptService {
 
     // Règle pédagogique : Ne jamais envoyer le corrigé ni les bonnes réponses aux étudiants
     const isTeacherOrAdmin = role === 'ENSEIGNANT' || role === 'ADMIN';
+    const nbQuestionsTotal = questionsDb.length;
+    const nbQuestionsCorrectes = evaluatedResponses.filter((r) => r.estCorrecte).length;
 
     return {
       tentativeId: savedAttempt.id,
@@ -241,6 +243,8 @@ export class AttemptService {
       estExpiree,
       score: totalScore,
       totalPointsPossible,
+      nbQuestionsCorrectes,
+      nbQuestionsTotal,
       pourcentage: totalPointsPossible > 0 ? Math.round((totalScore / totalPointsPossible) * 100) : 0,
       noteSur20: totalPointsPossible > 0 ? Math.round((totalScore / totalPointsPossible) * 20 * 10) / 10 : 0,
       dureeSecondes: Math.round(tempsEcouleMs / 1000),
