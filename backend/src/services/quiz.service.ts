@@ -21,6 +21,26 @@ export class QuizService {
     },
     enseignantId: string
   ) {
+    const trimmedTitre = data.titre.trim();
+
+    // Règle d'unicité : un enseignant ne peut pas avoir deux quiz avec le même titre
+    const existingQuiz = await prisma.quiz.findFirst({
+      where: {
+        enseignantId,
+        titre: {
+          equals: trimmedTitre,
+          mode: 'insensitive',
+        },
+      },
+    });
+
+    if (existingQuiz) {
+      throw new AppError(
+        `Un quiz avec le titre "${trimmedTitre}" existe déjà. Veuillez choisir un autre titre.`,
+        409
+      );
+    }
+
     if (data.modeExamenSecurise) {
       const now = new Date();
       const activeSub = await prisma.abonnement.findFirst({
@@ -44,7 +64,7 @@ export class QuizService {
     const statut = data.statut ?? StatutQuiz.BROUILLON;
 
     return quizRepository.create({
-      titre: data.titre,
+      titre: trimmedTitre,
       description: data.description,
       estPublic,
       statut,
@@ -116,6 +136,29 @@ export class QuizService {
       throw new AppError('Non autorisé à modifier ce quiz', 403);
     }
 
+    let trimmedTitre: string | undefined = undefined;
+    if (data.titre) {
+      trimmedTitre = data.titre.trim();
+      // Règle d'unicité : un enseignant ne peut pas avoir deux quiz avec le même titre
+      const duplicate = await prisma.quiz.findFirst({
+        where: {
+          enseignantId: quiz.enseignantId,
+          id: { not: quizId },
+          titre: {
+            equals: trimmedTitre,
+            mode: 'insensitive',
+          },
+        },
+      });
+
+      if (duplicate) {
+        throw new AppError(
+          `Un autre quiz avec le titre "${trimmedTitre}" existe déjà. Veuillez choisir un autre titre.`,
+          409
+        );
+      }
+    }
+
     if (data.modeExamenSecurise) {
       const now = new Date();
       const activeSub = await prisma.abonnement.findFirst({
@@ -133,6 +176,7 @@ export class QuizService {
 
     return quizRepository.update(quizId, {
       ...data,
+      ...(trimmedTitre !== undefined && { titre: trimmedTitre }),
       statut: targetStatut,
     });
   }
@@ -160,9 +204,23 @@ export class QuizService {
       throw new AppError('Non autorisé à dupliquer un quiz appartenant à un autre enseignant', 403);
     }
 
+    let copyTitle = `${original.titre} (Copie)`;
+    let copyIndex = 2;
+    while (
+      await prisma.quiz.findFirst({
+        where: {
+          enseignantId,
+          titre: { equals: copyTitle, mode: 'insensitive' },
+        },
+      })
+    ) {
+      copyTitle = `${original.titre} (Copie ${copyIndex})`;
+      copyIndex++;
+    }
+
     const newQuiz = await this.createQuiz(
       {
-        titre: `${original.titre} (Copie)`,
+        titre: copyTitle,
         description: original.description || undefined,
         estPublic: original.estPublic,
         dureeMinutes: original.dureeMinutes,

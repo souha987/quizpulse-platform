@@ -81,9 +81,16 @@ class _TeacherClassesScreenState extends ConsumerState<TeacherClassesScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             ),
             onPressed: () async {
-              if (nomCtrl.text.trim().isEmpty) return;
+              final newName = nomCtrl.text.trim();
+              if (newName.isEmpty) return;
+
+              if (_classes.any((c) => (c['nom'] ?? '').toString().trim().toLowerCase() == newName.toLowerCase())) {
+                AppAlert.warning(context, 'Vous avez déjà une classe portant le nom "$newName".');
+                return;
+              }
+
               try {
-                await apiClient.post('/classes', data: {'nom': nomCtrl.text.trim()});
+                await apiClient.post('/classes', data: {'nom': newName});
                 if (mounted) {
                   Navigator.pop(ctx);
                   AppAlert.success(context, 'Classe créée avec succès !');
@@ -147,6 +154,12 @@ class _TeacherClassesScreenState extends ConsumerState<TeacherClassesScreen> {
             onPressed: () async {
               final newName = nomCtrl.text.trim();
               if (newName.isEmpty) return;
+
+              if (_classes.any((c) => c['id'] != item['id'] && (c['nom'] ?? '').toString().trim().toLowerCase() == newName.toLowerCase())) {
+                AppAlert.warning(context, 'Vous avez déjà une classe portant le nom "$newName".');
+                return;
+              }
+
               try {
                 await apiClient.put('/classes/${item['id']}', data: {'nom': newName});
                 if (mounted) {

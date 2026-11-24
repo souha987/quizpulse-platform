@@ -13,6 +13,26 @@ export class ClassService {
   }
 
   async createClass(nom: string, enseignantId: string) {
+    const trimmedNom = nom.trim();
+
+    // Règle d'unicité : un enseignant ne peut pas avoir deux classes avec le même nom
+    const existingClass = await prisma.classe.findFirst({
+      where: {
+        enseignantId,
+        nom: {
+          equals: trimmedNom,
+          mode: 'insensitive',
+        },
+      },
+    });
+
+    if (existingClass) {
+      throw new AppError(
+        `Une classe avec le nom "${trimmedNom}" existe déjà. Veuillez choisir un autre nom.`,
+        409
+      );
+    }
+
     const now = new Date();
     const activeSub = await prisma.abonnement.findFirst({
       where: {
@@ -159,7 +179,27 @@ export class ClassService {
       throw new AppError('Non autorisé à modifier cette classe', 403);
     }
 
-    return classRepository.update(classeId, { nom });
+    const trimmedNom = nom.trim();
+    // Règle d'unicité : un enseignant ne peut pas avoir deux classes avec le même nom
+    const duplicate = await prisma.classe.findFirst({
+      where: {
+        enseignantId: classe.enseignantId,
+        id: { not: classeId },
+        nom: {
+          equals: trimmedNom,
+          mode: 'insensitive',
+        },
+      },
+    });
+
+    if (duplicate) {
+      throw new AppError(
+        `Une autre classe avec le nom "${trimmedNom}" existe déjà. Veuillez choisir un autre nom.`,
+        409
+      );
+    }
+
+    return classRepository.update(classeId, { nom: trimmedNom });
   }
 
   async deleteClass(classeId: string, teacherId: string, role?: string) {
