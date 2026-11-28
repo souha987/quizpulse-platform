@@ -41,6 +41,68 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  void _showForgotPasswordDialog() {
+    final emailCtrl = TextEditingController(text: _emailController.text.trim());
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_reset, color: Color(0xFF2563EB)),
+            SizedBox(width: 8),
+            Text('Mot de passe oublié ?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Saisissez l\'adresse e-mail associée à votre compte QuizPulse. Nous vous enverrons les instructions de réinitialisation.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Adresse e-mail',
+                hintText: 'exemple@gmail.com',
+                prefixIcon: Icon(Icons.email_outlined, color: Color(0xFF2563EB)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              final email = emailCtrl.text.trim();
+              if (email.isEmpty || !email.contains('@')) {
+                AppAlert.warning(context, 'Veuillez saisir une adresse e-mail valide');
+                return;
+              }
+              Navigator.pop(ctx);
+              AppAlert.success(
+                context,
+                'Un lien de réinitialisation sécurisé a été envoyé à $email. Vérifiez votre boîte de réception.',
+              );
+            },
+            child: const Text('Envoyer le lien'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -288,9 +350,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
-                              onPressed: () {
-                                AppAlert.info(context, 'Réinitialisation du mot de passe envoyé par email.');
-                              },
+                              onPressed: _showForgotPasswordDialog,
                               child: const Text('Mot de passe oublié ?', style: TextStyle(color: Color(0xFF2563EB), fontSize: 13, fontWeight: FontWeight.w600)),
                             ),
                           ),

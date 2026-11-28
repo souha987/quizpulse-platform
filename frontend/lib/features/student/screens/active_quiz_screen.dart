@@ -49,7 +49,10 @@ class _ActiveQuizScreenState extends ConsumerState<ActiveQuizScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final attemptState = ref.read(quizAttemptProvider);
 
-    // Mode examen sécurisé actif pour tout le déroulement du quiz
+    // L'anti-triche ne s'active UNIQUEMENT que si le quiz a le Mode Examen Sécurisé activé par l'enseignant !
+    final isSecurise = attemptState.quiz?.modeExamenSecurise ?? false;
+    if (!isSecurise) return; // Mode entraînement libre : aucune pénalité de triche
+
     if (!attemptState.isCompleted && !attemptState.isSubmitting && attemptState.questions.isNotEmpty) {
       if (state == AppLifecycleState.paused ||
           state == AppLifecycleState.inactive ||
@@ -512,45 +515,62 @@ class _ActiveQuizScreenState extends ConsumerState<ActiveQuizScreen>
               ),
             ),
             actions: [
-              // Indicateur Examen Sécurisé et Avertissements
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: attemptState.nbWarnings > 0
-                      ? const Color(0xFFFEE2E2)
-                      : const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: attemptState.nbWarnings > 0
-                        ? const Color(0xFFDC2626)
-                        : const Color(0xFF16A34A),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.shield,
-                      size: 16,
-                      color: attemptState.nbWarnings > 0
-                          ? const Color(0xFFDC2626)
-                          : const Color(0xFF16A34A),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      attemptState.nbWarnings > 0
-                          ? 'Triche Détectée (Annulé)'
-                          : 'Anti-Triche Strict (Sortie = 0/20)',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: attemptState.nbWarnings > 0
-                            ? const Color(0xFFDC2626)
-                            : const Color(0xFF16A34A),
+              // Indicateur Mode Examen vs Entraînement
+              Builder(
+                builder: (context) {
+                  final isSecurise = attemptState.quiz?.modeExamenSecurise ?? false;
+                  if (!isSecurise) {
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.menu_book_rounded, size: 15, color: Color(0xFF2563EB)),
+                          SizedBox(width: 5),
+                          Text(
+                            'Entraînement Libre',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: attemptState.nbWarnings > 0 ? const Color(0xFFFEE2E2) : const Color(0xFFFFF7ED),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: attemptState.nbWarnings > 0 ? const Color(0xFFDC2626) : const Color(0xFFFDBA74),
                       ),
                     ),
-                  ],
-                ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.shield,
+                          size: 15,
+                          color: attemptState.nbWarnings > 0 ? const Color(0xFFDC2626) : const Color(0xFFEA580C),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          attemptState.nbWarnings > 0 ? 'Fraude Détectée (Annulé)' : 'Examen Sécurisé (Sortie = 0/20)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: attemptState.nbWarnings > 0 ? const Color(0xFFDC2626) : const Color(0xFFC2410C),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
 
               // Compte à rebours interactif (Toggle Masquer / Afficher)

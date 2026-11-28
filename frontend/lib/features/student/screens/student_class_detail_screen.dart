@@ -1003,7 +1003,13 @@ class _StudentClassDetailScreenState extends ConsumerState<StudentClassDetailScr
                                       AppAlert.info(context, 'Vous avez déjà passé cette évaluation.');
                                     }
                                   }
-                                : () => context.push('/student/quiz/$id')),
+                                : () => _startQuizWithInstructions(
+                                      context: context,
+                                      quizId: id,
+                                      quizTitle: titre,
+                                      durationMinutes: duree,
+                                      isSecurise: isSecurise,
+                                    )),
                         child: Text(
                           isClassDeleted
                               ? 'Classe supprimée'
@@ -1021,6 +1027,111 @@ class _StudentClassDetailScreenState extends ConsumerState<StudentClassDetailScr
           }).toList(),
         );
       },
+    );
+  }
+
+  void _startQuizWithInstructions({
+    required BuildContext context,
+    required String quizId,
+    required String quizTitle,
+    required int durationMinutes,
+    required bool isSecurise,
+  }) {
+    if (!isSecurise) {
+      context.push('/student/quiz/$quizId');
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+        contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFCA5A5)),
+              ),
+              child: const Icon(Icons.shield_outlined, color: Color(0xFFDC2626), size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Consignes d\'Examen Sécurisé',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Vous êtes sur le point de débuter : "$quizTitle"',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning_amber_rounded, size: 20, color: Color(0xFFD97706)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Règle stricte anti-triche :\nNe quittez pas la page du quiz, ne changez pas d\'onglet et ne réduisez pas votre fenêtre. Toute sortie annulera immédiatement votre tentative avec la note définitive de 0.0/20 pour triche.',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF92400E), height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.timer_outlined, size: 16, color: Color(0xFF64748B)),
+                const SizedBox(width: 6),
+                Text(
+                  'Durée allouée : $durationMinutes minute(s)',
+                  style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler', style: TextStyle(color: Color(0xFF64748B))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.push('/student/quiz/$quizId');
+            },
+            child: const Text('J\'ai compris, débuter', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
     );
   }
 

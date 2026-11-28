@@ -305,6 +305,16 @@ export class AttemptService {
     if (!tentative) {
       throw new AppError('Tentative introuvable', 404);
     }
+
+    // Si le quiz n'est PAS en mode examen sécurisé (quiz libre/entraînement), pas d'annulation de triche
+    if (!tentative.quiz.modeExamenSecurise) {
+      return {
+        tentativeId: tentative.id,
+        statut: tentative.statut,
+        message: 'Ce quiz est en mode entraînement libre, aucune sanction de triche n\'est appliquée.',
+      };
+    }
+
     const updated = await attemptRepository.recordWarning(tentativeId);
     const totalPointsPossible = tentative.quiz.questions.reduce((sum, q) => sum + q.points, 0);
 
@@ -475,7 +485,7 @@ export class AttemptService {
       throw new AppError('Non autorisé à réinitialiser cette tentative', 403);
     }
 
-    await prisma.reponseUtilisateur.deleteMany({
+    await prisma.reponseDonnee.deleteMany({
       where: { tentativeId: attemptId },
     });
 

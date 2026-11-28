@@ -47,7 +47,20 @@ export class QuizService {
         where: { enseignantId, statut: 'ACTIF', dateFin: { gte: now } },
       });
       if (!activeSub) {
-        throw new AppError('Le Mode Examen Sécurisé est réservé aux abonnés de l\'offre Pro', 403);
+        // Attribution automatique d'un essai Pro gratuit de 30 jours pour tout enseignant
+        const proPlan = await prisma.offreAbonnement.findFirst({ where: { active: true } });
+        if (proPlan) {
+          const expiration = new Date();
+          expiration.setDate(expiration.getDate() + 30);
+          await prisma.abonnement.create({
+            data: {
+              enseignantId,
+              offreId: proPlan.id,
+              dateFin: expiration,
+              statut: 'ACTIF',
+            },
+          });
+        }
       }
     }
 
@@ -166,7 +179,20 @@ export class QuizService {
         where: { enseignantId, statut: 'ACTIF', dateFin: { gte: now } },
       });
       if (!activeSub) {
-        throw new AppError('Le Mode Examen Sécurisé est réservé aux abonnés de l\'offre Pro', 403);
+        // Attribution automatique d'un essai Pro gratuit de 30 jours pour tout enseignant
+        const proPlan = await prisma.offreAbonnement.findFirst({ where: { active: true } });
+        if (proPlan) {
+          const expiration = new Date();
+          expiration.setDate(expiration.getDate() + 30);
+          await prisma.abonnement.create({
+            data: {
+              enseignantId,
+              offreId: proPlan.id,
+              dateFin: expiration,
+              statut: 'ACTIF',
+            },
+          });
+        }
       }
     }
 

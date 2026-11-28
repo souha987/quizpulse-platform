@@ -670,7 +670,7 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
                                             children: [
                                               Icon(Icons.lock_outline, size: 16, color: Color(0xFF2563EB)),
                                               SizedBox(width: 8),
-                                              Text('Privé (Classe / Code PIN)'),
+                                              Text('Privé (Classe ou Code PIN)'),
                                             ],
                                           ),
                                         ),
@@ -680,7 +680,7 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
                                             children: [
                                               Icon(Icons.public, size: 16, color: Color(0xFF10B981)),
                                               SizedBox(width: 8),
-                                              Text('Public (Catalogue public)'),
+                                              Text('Public (Catalogue ouvert)'),
                                             ],
                                           ),
                                         ),
@@ -688,7 +688,6 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
                                       onChanged: (v) {
                                         setState(() {
                                           _estPublic = v ?? false;
-                                          _statut = 'PUBLIE';
                                         });
                                       },
                                     ),
@@ -699,7 +698,10 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
                               DropdownButtonFormField<String?>(
                                 value: _classeId,
                                 decoration: InputDecoration(
-                                  labelText: 'Classe assignée (Optionnel)',
+                                  labelText: 'Classe assignée',
+                                  helperText: _estPublic
+                                      ? 'Pour un quiz public, l\'assignation à une classe est facultative.'
+                                      : 'Sélectionnez la classe autorisée à passer ce quiz privé.',
                                   prefixIcon: const Icon(Icons.school_outlined, color: Color(0xFF2563EB)),
                                   suffixIcon: _isLoadingClasses
                                       ? const Padding(
@@ -715,7 +717,7 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
                                 items: [
                                   const DropdownMenuItem<String?>(
                                     value: null,
-                                    child: Text('Aucune classe (Quiz individuel / Libre)'),
+                                    child: Text('Aucune classe (Accès libre par code PIN)'),
                                   ),
                                   ..._availableClasses.map((c) {
                                     final cId = c['id'] as String;
@@ -730,32 +732,59 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
                                 onChanged: (val) => setState(() => _classeId = val),
                               ),
                               const SizedBox(height: 14),
-                              SwitchListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: const Text('Mode Examen Sécurisé (Anti-Triche)'),
-                                subtitle: const Text(
-                                    'Détecte et consigne la perte de focus, la sortie d\'écran et le changement d\'onglet.'),
-                                value: _modeExamenSecurise,
-                                onChanged: (v) => setState(() => _modeExamenSecurise = v),
-                              ),
+                              if (_isEditing) ...[
+                                DropdownButtonFormField<String>(
+                                  value: _statut,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Statut de publication',
+                                    prefixIcon: Icon(Icons.flag_outlined, color: Color(0xFF2563EB)),
+                                    helperText: 'En mode Publié, les étudiants peuvent voir et passer l\'évaluation.',
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'BROUILLON',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.edit_note, size: 18, color: Color(0xFFEAB308)),
+                                          SizedBox(width: 8),
+                                          Text('Brouillon (En cours d\'écriture - Masqué des élèves)'),
+                                        ],
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'PUBLIE',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.check_circle_outline, size: 18, color: Color(0xFF10B981)),
+                                          SizedBox(width: 8),
+                                          Text('Publié (Ouvert aux élèves)'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                  onChanged: (v) {
+                                    if (v == 'PUBLIE' && _questions.isEmpty) {
+                                      AppAlert.warning(context, 'Ajoutez au moins une question avant de publier ce quiz.');
+                                      return;
+                                    }
+                                    setState(() => _statut = v ?? 'BROUILLON');
+                                  },
+                                ),
+                                const SizedBox(height: 14),
+                              ],
                               SwitchListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: const Row(
                                   children: [
-                                    Icon(Icons.public, size: 18, color: Color(0xFF10B981)),
+                                    Icon(Icons.shield_outlined, size: 18, color: Color(0xFFEA580C)),
                                     SizedBox(width: 8),
-                                    Text('Rendre ce quiz Public dans le catalogue public', style: TextStyle(fontWeight: FontWeight.w700)),
+                                    Text('Mode Examen Sécurisé (Anti-Triche Strict)', style: TextStyle(fontWeight: FontWeight.w700)),
                                   ],
                                 ),
                                 subtitle: const Text(
-                                    'Visible par tous les visiteurs et étudiants dans la liste des quiz publics.'),
-                                value: _estPublic,
-                                onChanged: (v) {
-                                  setState(() {
-                                    _estPublic = v;
-                                    _statut = 'PUBLIE';
-                                  });
-                                },
+                                    'Activer pour un examen officiel : toute sortie d\'écran ou changement d\'onglet annule immédiatement la copie avec 0/20.\nDésactiver pour un quiz d\'entraînement libre où l\'élève peut consulter ses cours.'),
+                                value: _modeExamenSecurise,
+                                onChanged: (v) => setState(() => _modeExamenSecurise = v),
                               ),
                             ],
                           ),
@@ -764,39 +793,64 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
                       const SizedBox(height: 24),
 
                       // Section Questions & Glisser-Déposer
-                      Row(
-                        children: [
-                          const Text(
-                            'Questions de l\'évaluation',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                          const Spacer(),
-                          if (_isEditing) ...[
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF1E40AF),
-                side: const BorderSide(color: Color(0xFF1E40AF)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              ),
-              onPressed: () => context.push('/student/quiz/${widget.quizId}'),
-              icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
-              label: const Text('Prévisualiser', style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-            const SizedBox(width: 8),
-          ],
-          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2563EB),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            ),
-                            onPressed: _showAddQuestionDialog,
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Ajouter une question', style: TextStyle(fontWeight: FontWeight.w700)),
-                          ),
-                        ],
+                      Builder(
+                        builder: (context) {
+                          final totalBareme = _questions.fold<double>(0.0, (acc, q) => acc + q.points);
+
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Questions de l\'évaluation',
+                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEFF6FF),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: const Color(0xFFBFDBFE)),
+                                    ),
+                                    child: Text(
+                                      'Barème total : ${totalBareme.toStringAsFixed(1)} point(s) • Ramené sur 20 pour l\'élève',
+                                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Spacer(),
+                              if (_isEditing) ...[
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF1E40AF),
+                                    side: const BorderSide(color: Color(0xFF1E40AF)),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  ),
+                                  onPressed: () => context.push('/student/quiz/${widget.quizId}'),
+                                  icon: const Icon(Icons.remove_red_eye_outlined, size: 18),
+                                  label: const Text('Prévisualiser', style: TextStyle(fontWeight: FontWeight.w700)),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF2563EB),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                ),
+                                onPressed: _showAddQuestionDialog,
+                                icon: const Icon(Icons.add, size: 18),
+                                label: const Text('Ajouter une question', style: TextStyle(fontWeight: FontWeight.w700)),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 10),
 
