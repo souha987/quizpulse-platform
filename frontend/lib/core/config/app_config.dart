@@ -3,15 +3,22 @@ import 'package:flutter/foundation.dart';
 
 class AppConfig {
   static const int defaultPort = 5000;
+  static const String productionApiUrl = 'https://quizpulse-platform-6pfl.onrender.com/api';
 
   /// URL de l'API backend résolue selon les priorités suivantes :
   /// 1. Flag compilé via `--dart-define=API_URL=https://...`
-  /// 2. Hôte dynamique sur Flutter Web (ex: http://192.168.x.x:5000/api si accédé depuis un smartphone/tablette sur le réseau local)
-  /// 3. Hôte spécial Android Emulator (http://10.0.2.2:5000/api)
-  /// 4. Hôte par défaut (http://localhost:5000/api)
+  /// 2. Sur mobile en mode release ou sur smartphone réel : URL de production Render
+  /// 3. Hôte dynamique sur Flutter Web (ex: http://192.168.x.x:5000/api si accédé depuis le réseau local)
+  /// 4. Hôte spécial Android Emulator en mode debug (http://10.0.2.2:5000/api)
+  /// 5. Hôte par défaut
   static String get defaultApiUrl {
     const envUrl = String.fromEnvironment('API_URL');
     if (envUrl.isNotEmpty) return envUrl;
+
+    // Sur application mobile installée sur smartphone (mode release), pointer vers le serveur de production
+    if (!kIsWeb && kReleaseMode) {
+      return productionApiUrl;
+    }
 
     if (kIsWeb) {
       final origin = Uri.base.origin;
@@ -32,6 +39,6 @@ class AppConfig {
       return 'http://10.0.2.2:$defaultPort/api';
     }
 
-    return 'http://localhost:$defaultPort/api';
+    return productionApiUrl;
   }
 }
