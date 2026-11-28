@@ -158,6 +158,54 @@ class _TeacherAnalyticsScreenState extends ConsumerState<TeacherAnalyticsScreen>
     }
   }
 
+  void _confirmResetAttempt(String attemptId, String studentName) {
+    if (attemptId.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.restart_alt, color: Color(0xFF2563EB)),
+            SizedBox(width: 8),
+            Text('Réinitialiser la tentative ?'),
+          ],
+        ),
+        content: Text(
+          'Voulez-vous autoriser $studentName à repasser cette évaluation ?\n\nSa copie actuelle et les éventuelles sanctions de triche seront supprimées pour lui permettre une nouvelle tentative.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                final res = await apiClient.delete('/attempts/$attemptId/reset');
+                if (mounted) {
+                  AppAlert.success(context, res.data['message'] ?? 'Tentative réinitialisée');
+                  if (_selectedQuizId != null) {
+                    _loadAnalyticsForQuiz(_selectedQuizId!);
+                  }
+                }
+              } catch (e) {
+                if (mounted) {
+                  AppAlert.error(context, getErrorMessage(e, 'Impossible de réinitialiser la tentative'));
+                }
+              }
+            },
+            child: const Text('Réinitialiser'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = _analytics?['titre'] ?? 'Sélectionnez un quiz';
@@ -513,6 +561,7 @@ class _TeacherAnalyticsScreenState extends ConsumerState<TeacherAnalyticsScreen>
                             DataColumn(label: Text('Note sur 20', style: TextStyle(fontWeight: FontWeight.w800))),
                             DataColumn(label: Text('Score brut', style: TextStyle(fontWeight: FontWeight.w800))),
                             DataColumn(label: Text('Intégrité Anti-Triche', style: TextStyle(fontWeight: FontWeight.w800))),
+                            DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.w800))),
                           ],
                           rows: studentAttempts.map((att) {
                             final isCheated = att['statut'] == 'ANNULEE_TRICHE' ||
@@ -608,6 +657,22 @@ class _TeacherAnalyticsScreenState extends ConsumerState<TeacherAnalyticsScreen>
                                           ),
                                         ),
                                       ],
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFF2563EB),
+                                      side: const BorderSide(color: Color(0xFFBFDBFE)),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                    icon: const Icon(Icons.restart_alt, size: 14),
+                                    label: const Text('Réinitialiser', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                    onPressed: () => _confirmResetAttempt(
+                                      att['id']?.toString() ?? '',
+                                      studentDisplayName,
                                     ),
                                   ),
                                 ),

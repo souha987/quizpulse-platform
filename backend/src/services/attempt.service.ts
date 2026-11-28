@@ -32,6 +32,10 @@ export class AttemptService {
       throw new AppError('Ce quiz n\'est pas accessible pour le moment', 403);
     }
 
+    if (quiz.classe && (quiz.classe as any).estSupprimee) {
+      throw new AppError('Ce quiz n\'est plus disponible (sa classe a été supprimée par l\'enseignant)', 403);
+    }
+
     // Vérification des droits d'accès
     if (!quiz.estPublic) {
       if (quiz.classeId) {
@@ -45,6 +49,32 @@ export class AttemptService {
         }
       } else if (quiz.enseignantId !== userId) {
         throw new AppError('Ce quiz est privé et réservé à son créateur', 403);
+      }
+    }
+
+    // Règle d'examen strict : Si l'étudiant a déjà une tentative terminée ou annulée pour triche, interdiction de repasser
+    if (userId) {
+      const existingCompletedAttempt = await prisma.tentative.findFirst({
+        where: {
+          quizId: quiz.id,
+          utilisateurId: userId,
+          statut: {
+            in: [StatutTentative.TERMINEE, StatutTentative.ANNULEE_TRICHE, StatutTentative.EXPIREE],
+          },
+        },
+      });
+
+      if (existingCompletedAttempt) {
+        if (existingCompletedAttempt.statut === StatutTentative.ANNULEE_TRICHE) {
+          throw new AppError(
+            'Votre tentative a été définitivement annulée pour non-respect des règles d\'examen (fraude détectée). Vous ne pouvez pas recommencer.',
+            403
+          );
+        }
+        throw new AppError(
+          'Vous avez déjà terminé cette évaluation. Une seule tentative est autorisée par étudiant.',
+          403
+        );
       }
     }
 
@@ -419,6 +449,47 @@ export class AttemptService {
     }
 
     return tentative;
+  }
+
+  /**
+   * Réinitialisation d'une tentative par l'enseignant propriétaire (ou Admin).
+   * Permet d'effacer une tentative (ex: coupure réseau, incident technique ou fraude avec pardon pédagogique)
+   * pour que l'étudiant puisse recommencer l'épreuve.
+   */
+  async resetAttempt(attemptId: string, teacherId: string, role?: string) {
+    const attempt = await prisma.tentative.findUnique({
+      where: { id: attemptId },
+      include: {
+        quiz: true,
+        utilisateur: {
+          select: { id: true, nom: true, prenom: true, email: true },
+        },
+      },
+    });
+
+    if (!attempt) {
+      throw new AppError('Tentative introuvable', 404);
+    }
+
+    if (attempt.quiz.enseignantId !== teacherId && role !== 'ADMIN') {
+      throw new AppError('Non autorisé à réinitialiser cette tentative', 403);
+    }
+
+    await prisma.reponseUtilisateur.deleteMany({
+      where: { tentativeId: attemptId },
+    });
+
+    await prisma.tentative.delete({
+      where: { id: attemptId },
+    });
+
+    const studentName = attempt.utilisateur
+      ? `${attempt.utilisateur.prenom} ${attempt.utilisateur.nom}`
+      : 'l\'étudiant';
+
+    return {
+      message: `La tentative de ${studentName} a été réinitialisée. L'étudiant peut repasser l'évaluation.`,
+    };
   }
 }
 

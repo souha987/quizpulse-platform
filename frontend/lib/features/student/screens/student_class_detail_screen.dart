@@ -80,6 +80,51 @@ class _StudentClassDetailScreenState extends ConsumerState<StudentClassDetailScr
     }
   }
 
+  void _confirmLeaveClass() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.logout_rounded, color: Color(0xFFDC2626)),
+            SizedBox(width: 8),
+            Text('Quitter cette classe ?'),
+          ],
+        ),
+        content: Text(
+          'Êtes-vous sûr de vouloir vous désinscrire de la classe "${_classe?['nom'] ?? 'cette classe'}" ? Vous ne recevrez plus les nouveaux quiz assignés.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await apiClient.delete('/classes/${widget.classId}/leave');
+                if (mounted) {
+                  AppAlert.success(context, 'Vous avez quitté la classe avec succès.');
+                  context.go('/student/classes');
+                }
+              } catch (e) {
+                if (mounted) {
+                  AppAlert.error(context, getErrorMessage(e, 'Impossible de quitter la classe'));
+                }
+              }
+            },
+            child: const Text('Confirmer et quitter'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -388,13 +433,31 @@ class _StudentClassDetailScreenState extends ConsumerState<StudentClassDetailScr
                     ),
                   );
 
+                  final leaveButton = OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFDC2626),
+                      side: const BorderSide(color: Color(0xFFFCA5A5)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    icon: const Icon(Icons.logout_rounded, size: 16),
+                    label: const Text('Quitter la classe', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    onPressed: _confirmLeaveClass,
+                  );
+
                   if (isWide) {
                     return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(child: headerInfo),
                         const SizedBox(width: 16),
-                        teacherQuickCard,
+                        Row(
+                          children: [
+                            teacherQuickCard,
+                            const SizedBox(width: 12),
+                            leaveButton,
+                          ],
+                        ),
                       ],
                     );
                   } else {
@@ -403,7 +466,13 @@ class _StudentClassDetailScreenState extends ConsumerState<StudentClassDetailScr
                       children: [
                         headerInfo,
                         const SizedBox(height: 16),
-                        teacherQuickCard,
+                        Row(
+                          children: [
+                            Expanded(child: teacherQuickCard),
+                            const SizedBox(width: 10),
+                            leaveButton,
+                          ],
+                        ),
                       ],
                     );
                   }
@@ -739,8 +808,11 @@ class _StudentClassDetailScreenState extends ConsumerState<StudentClassDetailScr
             final isSecurise = q['modeExamenSecurise'] == true;
 
             final attempt = q['derniereTentative'];
-            final isCompleted = attempt != null && (attempt['statut'] == 'TERMINEE' || attempt['statut'] == 'EXPIREE');
+            final attStatut = attempt?['statut'];
+            final isCheated = attStatut == 'ANNULEE_TRICHE';
+            final isCompleted = attempt != null && (attStatut == 'TERMINEE' || attStatut == 'EXPIREE' || isCheated);
             final score = attempt != null ? (attempt['score'] as num?)?.toDouble() : null;
+            final isClassDeleted = _classe?['estSupprimee'] == true;
 
             return SizedBox(
               width: cardWidth,
@@ -750,8 +822,10 @@ class _StudentClassDetailScreenState extends ConsumerState<StudentClassDetailScr
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isCompleted ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0),
-                    width: isCompleted ? 1.5 : 1.0,
+                    color: isCheated
+                        ? const Color(0xFFFECACA)
+                        : (isCompleted ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0)),
+                    width: (isCompleted || isCheated) ? 1.5 : 1.0,
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -773,7 +847,27 @@ class _StudentClassDetailScreenState extends ConsumerState<StudentClassDetailScr
                             children: [
                               Row(
                                 children: [
-                                  if (isCompleted) ...[
+                                  if (isCheated) ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFEF2F2),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: const Color(0xFFFECACA)),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.cancel, size: 12, color: Color(0xFFDC2626)),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'Fraude détectée • 0.0/20',
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFDC2626)),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ] else if (isCompleted) ...[
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
@@ -882,13 +976,40 @@ class _StudentClassDetailScreenState extends ConsumerState<StudentClassDetailScr
                     SizedBox(
                       width: double.infinity,
                       child: Pulse3DButton(
-                        backgroundColor: isCompleted ? const Color(0xFF059669) : const Color(0xFF2563EB),
-                        shadowColor: isCompleted ? const Color(0xFF047857) : const Color(0xFF1D4ED8),
-                        icon: isCompleted ? Icons.replay : Icons.play_arrow,
+                        backgroundColor: isClassDeleted
+                            ? const Color(0xFF94A3B8)
+                            : (isCheated
+                                ? const Color(0xFFDC2626)
+                                : (isCompleted ? const Color(0xFF059669) : const Color(0xFF2563EB))),
+                        shadowColor: isClassDeleted
+                            ? const Color(0xFF64748B)
+                            : (isCheated
+                                ? const Color(0xFFB91C1C)
+                                : (isCompleted ? const Color(0xFF047857) : const Color(0xFF1D4ED8))),
+                        icon: isClassDeleted
+                            ? Icons.block
+                            : (isCompleted ? Icons.visibility : Icons.play_arrow),
                         padding: const EdgeInsets.symmetric(vertical: 11),
-                        onPressed: () => context.push('/student/quiz/$id'),
+                        onPressed: isClassDeleted
+                            ? () {
+                                AppAlert.warning(context, 'Cette classe a été supprimée par l\'enseignant. Les quiz ne sont plus accessibles.');
+                              }
+                            : (isCompleted
+                                ? () {
+                                    final attId = attempt?['id'];
+                                    if (attId != null) {
+                                      context.push('/student/result?attemptId=$attId');
+                                    } else {
+                                      AppAlert.info(context, 'Vous avez déjà passé cette évaluation.');
+                                    }
+                                  }
+                                : () => context.push('/student/quiz/$id')),
                         child: Text(
-                          isCompleted ? 'Recommencer l\'évaluation' : 'Commencer le quiz',
+                          isClassDeleted
+                              ? 'Classe supprimée'
+                              : (isCheated
+                                  ? 'Voir sanction (0/20)'
+                                  : (isCompleted ? 'Voir mon résultat' : 'Commencer le quiz')),
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
                         ),
                       ),

@@ -94,6 +94,18 @@ export class AttemptController {
       next(error);
     }
   }
+
+  async resetAttempt(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const attemptId = req.params.id as string;
+      const teacherId = req.user!.userId;
+      const role = req.user?.role;
+      const result = await attemptService.resetAttempt(attemptId, teacherId, role);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const attemptController = new AttemptController();

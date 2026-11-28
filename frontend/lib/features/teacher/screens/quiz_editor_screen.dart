@@ -83,9 +83,14 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
   Future<void> _saveQuiz() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final finalStatut = _estPublic ? 'PUBLIE' : _statut;
+    if (_isEditing && finalStatut == 'PUBLIE' && _questions.isEmpty) {
+      AppAlert.warning(context, 'Vous devez ajouter au moins une question avant de pouvoir publier ce quiz.');
+      return;
+    }
+
     setState(() => _isSaving = true);
     try {
-      final finalStatut = _estPublic ? 'PUBLIE' : _statut;
       if (_isEditing) {
         await apiClient.put('/quiz/${widget.quizId}', data: {
           'titre': _titreCtrl.text.trim(),
@@ -105,7 +110,7 @@ class _QuizEditorScreenState extends State<QuizEditorScreen> {
           'description': _descCtrl.text.trim(),
           'dureeMinutes': _dureeMinutes,
           'estPublic': _estPublic,
-          'statut': finalStatut,
+          'statut': 'BROUILLON',
           'modeExamenSecurise': _modeExamenSecurise,
           if (_classeId != null) 'classeId': _classeId,
         });

@@ -32,6 +32,14 @@ router.post(
   (req, res, next) => classController.joinClass(req, res, next)
 );
 
+// Quitter une classe (Étudiant)
+router.delete(
+  '/:id/leave',
+  requireAuth,
+  requireRole([Role.ETUDIANT, Role.ADMIN]),
+  (req, res, next) => classController.leaveClass(req, res, next)
+);
+
 // Obtenir ses classes rejointes (Étudiant)
 router.get(
   '/student',

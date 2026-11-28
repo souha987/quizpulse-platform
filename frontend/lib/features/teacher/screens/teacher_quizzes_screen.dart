@@ -88,16 +88,25 @@ class _TeacherQuizzesScreenState extends ConsumerState<TeacherQuizzesScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Confirmer la suppression'),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626)),
+            SizedBox(width: 8),
+            Text('Supprimer le quiz ?'),
+          ],
+        ),
         content: const Text(
-          'Voulez-vous vraiment supprimer définitivement ce quiz ? Cette action est irréversible et supprimera également l\'ensemble des résultats, notes et tentatives des étudiants associés.',
+          'Voulez-vous vraiment supprimer définitivement ce quiz ?\n\n⚠️ Attention : cette action est irréversible et supprimera également l\'ensemble des résultats, notes et copies des étudiants associés.',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Supprimer'),
+            child: const Text('Confirmer la suppression'),
           ),
         ],
       ),

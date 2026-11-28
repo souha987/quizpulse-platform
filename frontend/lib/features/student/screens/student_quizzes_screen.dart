@@ -154,7 +154,8 @@ class _StudentQuizzesScreenState extends ConsumerState<StudentQuizzesScreen> {
       }
 
       // Filtrer par statut (À faire vs Terminé)
-      final isDone = q.derniereTentative != null && (q.derniereTentative!['statut'] == 'TERMINEE' || q.derniereTentative!['statut'] == 'EXPIREE');
+      final statut = q.derniereTentative?['statut'];
+      final isDone = q.derniereTentative != null && (statut == 'TERMINEE' || statut == 'EXPIREE' || statut == 'ANNULEE_TRICHE');
       if (_selectedStatusFilter == 'A_FAIRE' && isDone) {
         return false;
       }
@@ -244,11 +245,11 @@ class _StudentQuizzesScreenState extends ConsumerState<StudentQuizzesScreen> {
                 ),
                 _buildStatusFilterChip('Tous (${_quizzes.length})', 'TOUS'),
                 _buildStatusFilterChip(
-                  'À compléter (${_quizzes.where((q) => q.derniereTentative == null || (q.derniereTentative!['statut'] != 'TERMINEE' && q.derniereTentative!['statut'] != 'EXPIREE')).length})',
+                  'À compléter (${_quizzes.where((q) => q.derniereTentative == null || (q.derniereTentative!['statut'] != 'TERMINEE' && q.derniereTentative!['statut'] != 'EXPIREE' && q.derniereTentative!['statut'] != 'ANNULEE_TRICHE')).length})',
                   'A_FAIRE',
                 ),
                 _buildStatusFilterChip(
-                  'Terminés (${_quizzes.where((q) => q.derniereTentative != null && (q.derniereTentative!['statut'] == 'TERMINEE' || q.derniereTentative!['statut'] == 'EXPIREE')).length})',
+                  'Terminés (${_quizzes.where((q) => q.derniereTentative != null && (q.derniereTentative!['statut'] == 'TERMINEE' || q.derniereTentative!['statut'] == 'EXPIREE' || q.derniereTentative!['statut'] == 'ANNULEE_TRICHE')).length})',
                   'TERMINE',
                 ),
               ],
@@ -358,21 +359,29 @@ class _StudentQuizzesScreenState extends ConsumerState<StudentQuizzesScreen> {
                 children: filtered.asMap().entries.map((entry) {
                   final idx = entry.key;
                   final quiz = entry.value;
-                  final isDone = quiz.derniereTentative != null && (quiz.derniereTentative!['statut'] == 'TERMINEE' || quiz.derniereTentative!['statut'] == 'EXPIREE');
+                  final attStatut = quiz.derniereTentative?['statut'];
+                  final isCheated = attStatut == 'ANNULEE_TRICHE';
+                  final isDone = quiz.derniereTentative != null && (attStatut == 'TERMINEE' || attStatut == 'EXPIREE' || isCheated);
                   final score = quiz.derniereTentative?['score'];
                   final attemptId = quiz.derniereTentative?['id'];
 
                   final isMath = quiz.titre.contains('Algèbre') || quiz.matiereNom == 'Mathématiques';
                   final isBio = quiz.titre.contains('cellules') || quiz.matiereNom == 'Biologie';
-                  final color = isMath
-                      ? const Color(0xFF2563EB)
-                      : (isBio ? const Color(0xFF10B981) : const Color(0xFF8B5CF6));
+                  final color = isCheated
+                      ? const Color(0xFFDC2626)
+                      : (isMath
+                          ? const Color(0xFF2563EB)
+                          : (isBio ? const Color(0xFF10B981) : const Color(0xFF8B5CF6)));
 
-                  final statusLabel = isDone
-                      ? 'Complété • Note : ${score != null ? "${score}/20" : "Rendue"}'
-                      : 'Classe : ${quiz.classeNom ?? "Assigné"}';
+                  final statusLabel = isCheated
+                      ? '⚠️ Fraude détectée • 0.0/20'
+                      : (isDone
+                          ? 'Complété • Note : ${score != null ? "${score}/20" : "Rendue"}'
+                          : 'Classe : ${quiz.classeNom ?? "Assigné"}');
 
-                  final buttonLabel = isDone ? 'Voir le résultat' : 'Commencer l\'évaluation';
+                  final buttonLabel = isCheated
+                      ? 'Voir sanction (0/20)'
+                      : (isDone ? 'Voir le résultat' : 'Commencer l\'évaluation');
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 14),

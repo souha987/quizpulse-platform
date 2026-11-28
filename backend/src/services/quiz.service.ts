@@ -61,7 +61,8 @@ export class QuizService {
     }
 
     const estPublic = data.estPublic ?? false;
-    const statut = data.statut ?? StatutQuiz.BROUILLON;
+    // Un nouveau quiz créé n'a encore aucune question : statut forcé à BROUILLON jusqu'à ajout des questions
+    const statut = StatutQuiz.BROUILLON;
 
     return quizRepository.create({
       titre: trimmedTitre,
@@ -390,6 +391,9 @@ export class QuizService {
       where: {
         classeId: { in: classIds },
         statut: StatutQuiz.PUBLIE,
+        classe: {
+          estSupprimee: false,
+        },
       },
       include: {
         enseignant: {

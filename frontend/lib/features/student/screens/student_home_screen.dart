@@ -516,6 +516,8 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                 final isEnCours = att.statut == 'EN_COURS';
                 final isExpiree = att.statut == 'EXPIREE';
 
+                final isCheated = att.statut == 'ANNULEE_TRICHE';
+
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Row(
@@ -523,10 +525,14 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
+                          color: isCheated ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Icon(Icons.assignment_turned_in_outlined, color: Color(0xFF2563EB), size: 16),
+                        child: Icon(
+                          isCheated ? Icons.warning_amber_rounded : Icons.assignment_turned_in_outlined,
+                          color: isCheated ? const Color(0xFFDC2626) : const Color(0xFF2563EB),
+                          size: 16,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -538,23 +544,38 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5, color: Color(0xFF0F172A)),
                             ),
                             const SizedBox(height: 2),
-                            Text(dateStr, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                            Text(
+                              isCheated ? '$dateStr • Sortie d\'écran' : dateStr,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: isCheated ? const Color(0xFFDC2626) : const Color(0xFF64748B),
+                                fontWeight: isCheated ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                         decoration: BoxDecoration(
-                          color: score >= 10 ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+                          color: isCheated
+                              ? const Color(0xFFFEF2F2)
+                              : (score >= 10 ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC)),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: score >= 10 ? const Color(0xFFBFDBFE) : const Color(0xFFE2E8F0)),
+                          border: Border.all(
+                            color: isCheated
+                                ? const Color(0xFFFECACA)
+                                : (score >= 10 ? const Color(0xFFBFDBFE) : const Color(0xFFE2E8F0)),
+                          ),
                         ),
                         child: Text(
-                          '${score.toStringAsFixed(1)} / 20',
+                          isCheated ? 'Fraude • 0.0/20' : '${score.toStringAsFixed(1)} / 20',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: score >= 10 ? const Color(0xFF1D4ED8) : const Color(0xFF475569),
+                            color: isCheated
+                                ? const Color(0xFFDC2626)
+                                : (score >= 10 ? const Color(0xFF1D4ED8) : const Color(0xFF475569)),
                           ),
                         ),
                       ),

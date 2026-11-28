@@ -209,45 +209,6 @@ class _JoinQuizScreenState extends State<JoinQuizScreen> {
                     ),
                   ],
 
-                  const SizedBox(height: 14),
-
-                  // Puces démo rapides
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('Codes démo : ', style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
-                      InkWell(
-                        onTap: () {
-                          setState(() => _pinController.text = '123456');
-                          _submitPin();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEEF2FF),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text('123456 (Public)', style: TextStyle(fontSize: 11, color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      InkWell(
-                        onTap: () {
-                          setState(() => _pinController.text = '742000');
-                          _submitPin();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFECFDF5),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text('742000 (Examen)', style: TextStyle(fontSize: 11, color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-                  ),
-
                   const SizedBox(height: 22),
 
                   // Pavé numérique tactile 3D

@@ -288,11 +288,11 @@ class _StudentHistoryScreenState extends ConsumerState<StudentHistoryScreen> {
                                               color: Color(0xFF0F172A),
                                             ),
                                           ),
-                                          if (item.nbAvertissementsTriche > 0) ...[
+                                          if (item.statut == 'ANNULEE_TRICHE' || item.nbAvertissementsTriche > 0) ...[
                                             const SizedBox(height: 4),
-                                            Text(
-                                              '⚠️ ${item.nbAvertissementsTriche} avertissement(s) perte de focus détecté(s)',
-                                              style: const TextStyle(
+                                            const Text(
+                                              '⚠️ Épreuve invalidée : sortie d\'écran d\'examen détectée',
+                                              style: TextStyle(
                                                 fontSize: 11.5,
                                                 color: Color(0xFFDC2626),
                                                 fontWeight: FontWeight.bold,
@@ -312,23 +312,27 @@ class _StudentHistoryScreenState extends ConsumerState<StudentHistoryScreen> {
                                           style: TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.w900,
-                                            color: item.score >= 10.0 ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                                            color: item.statut == 'ANNULEE_TRICHE'
+                                                ? const Color(0xFFDC2626)
+                                                : (item.score >= 10.0 ? const Color(0xFF10B981) : const Color(0xFFDC2626)),
                                           ),
                                         ),
                                         const SizedBox(height: 4),
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFFECFDF5),
+                                            color: item.statut == 'ANNULEE_TRICHE' ? const Color(0xFFFEF2F2) : const Color(0xFFECFDF5),
                                             borderRadius: BorderRadius.circular(6),
-                                            border: Border.all(color: const Color(0xFFA7F3D0)),
+                                            border: Border.all(
+                                              color: item.statut == 'ANNULEE_TRICHE' ? const Color(0xFFFECACA) : const Color(0xFFA7F3D0),
+                                            ),
                                           ),
-                                          child: const Text(
-                                            'Terminé',
+                                          child: Text(
+                                            item.statut == 'ANNULEE_TRICHE' ? 'Fraude' : 'Terminé',
                                             style: TextStyle(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w700,
-                                              color: Color(0xFF059669),
+                                              color: item.statut == 'ANNULEE_TRICHE' ? const Color(0xFFDC2626) : const Color(0xFF059669),
                                             ),
                                           ),
                                         ),

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { attemptController } from '../controllers/attempt.controller';
-import { requireAuth, optionalAuth } from '../middlewares/auth.middleware';
+import { requireAuth, optionalAuth, requireRole } from '../middlewares/auth.middleware';
+import { Role } from '@prisma/client';
 import { validateBody } from '../middlewares/validate.middleware';
 import { submitAttemptSchema } from '../validations';
 
@@ -22,6 +23,14 @@ router.post('/:id/warning', optionalAuth, (req, res, next) =>
 // Sauvegarde automatique de la progression en cours
 router.post('/:id/save-progress', optionalAuth, (req, res, next) =>
   attemptController.saveProgress(req, res, next)
+);
+
+// Réinitialiser la tentative d'un étudiant (Enseignant propriétaire du quiz ou Admin)
+router.delete(
+  '/:id/reset',
+  requireAuth,
+  requireRole([Role.ENSEIGNANT, Role.ADMIN]),
+  (req, res, next) => attemptController.resetAttempt(req, res, next)
 );
 
 // Historique personnel des tentatives (Étudiant connecté)

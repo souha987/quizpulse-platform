@@ -41,6 +41,16 @@ export class ClassController {
     }
   }
 
+  async leaveClass(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const result = await classService.leaveClass(id as string, req.user!.userId);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getMyStudentClasses(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const classes = await classService.getStudentClasses(req.user!.userId);

@@ -130,8 +130,8 @@ export class ClassService {
 
   async joinClass(codeClasse: string, etudiantId: string) {
     const classe = await classRepository.findByCode(codeClasse.trim().toUpperCase());
-    if (!classe) {
-      throw new AppError('Code classe invalide ou inexistant', 404);
+    if (!classe || (classe as any).estSupprimee) {
+      throw new AppError('Code classe invalide ou classe clôturée par l\'enseignant', 404);
     }
 
     const alreadyInClass = await classRepository.isStudentInClass(etudiantId, classe.id);
@@ -150,6 +150,15 @@ export class ClassService {
         enseignant: classe.enseignant,
       },
     };
+  }
+
+  async leaveClass(classeId: string, etudiantId: string) {
+    const isEnrolled = await classRepository.isStudentInClass(etudiantId, classeId);
+    if (!isEnrolled) {
+      throw new AppError('Vous n\'êtes pas inscrit dans cette classe', 400);
+    }
+    await classRepository.removeStudent(classeId, etudiantId);
+    return { message: 'Vous avez quitté la classe avec succès' };
   }
 
   async getStudentClasses(etudiantId: string) {
